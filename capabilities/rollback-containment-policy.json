@@ -1,0 +1,18 @@
+{
+  "version": "v38",
+  "principle": "Enable bold autonomous action while containing failures, isolating risky branches, and preferring scoped recovery over unnecessary full reset.",
+  "learning_targets": [
+    "scoped_rollback_quality",
+    "blast_radius_control",
+    "safe_experimentation_quality",
+    "promotion_safety",
+    "revert_precision",
+    "containment_preservation_quality"
+  ],
+  "guardrails": [
+    "prefer scoped rollback when valid work can be preserved",
+    "do not let one failing branch poison unrelated progress",
+    "use bounded experiments before broad promotion when risk is significant"
+  ],
+  "rule": "Use mission outcomes to improve rollback precision and failure containment without broad autonomy suppression."
+}

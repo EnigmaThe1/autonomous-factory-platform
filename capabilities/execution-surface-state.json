@@ -1,0 +1,11 @@
+{
+  "version": "v26",
+  "generated_at": null,
+  "surface_biases": {
+    "signal_density_bias": 0.45,
+    "state_visibility_bias": 0.7,
+    "operator_control_visibility_bias": 0.55,
+    "update_cadence_bias": 0.5,
+    "surface_minimization_bias": 0.75
+  }
+}

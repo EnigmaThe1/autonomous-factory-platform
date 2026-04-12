@@ -1,0 +1,11 @@
+{
+  "version": "v38",
+  "generated_at": null,
+  "containment_biases": {
+    "scoped_rollback_bias": 0.8,
+    "blast_radius_restraint_bias": 0.8,
+    "safe_experiment_bias": 0.7,
+    "promotion_caution_bias": 0.65,
+    "preserve_valid_work_bias": 0.85
+  }
+}

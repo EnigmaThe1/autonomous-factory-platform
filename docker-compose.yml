@@ -1,0 +1,35 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: af_platform
+      POSTGRES_USER: af
+      POSTGRES_PASSWORD: af_dev_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U af -d af_platform"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      AF_DATABASE_URL: postgresql+asyncpg://af:af_dev_password@db:5432/af_platform
+      AF_DEBUG: "false"
+      AF_LOG_LEVEL: info
+      AF_WORKSPACE_ROOT: /workspace
+    volumes:
+      - ./workspace:/workspace
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  pgdata:

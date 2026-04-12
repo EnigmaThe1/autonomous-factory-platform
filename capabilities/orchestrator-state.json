@@ -1,0 +1,11 @@
+{
+  "version": "v22",
+  "generated_at": null,
+  "routing_biases": {
+    "prefer_single_agent_for_simple_work": 0.7,
+    "specialist_escalation_sensitivity": 0.6,
+    "parallelization_readiness": 0.5,
+    "validation_routing_bias": 0.6,
+    "late_escalation_correction_bias": 0.5
+  }
+}

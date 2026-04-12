@@ -1,0 +1,17 @@
+{
+  "version": "v21",
+  "patterns": {
+    "research_planning": {
+      "preferred_bias": "research_first_then_plan",
+      "notes": "Research-heavy missions benefit from external truth gathering before decomposition hardens."
+    },
+    "web_app_build": {
+      "preferred_bias": "contract_then_phased_build",
+      "notes": "Product builds benefit from phased decomposition with environment and validation awareness."
+    },
+    "refactor_repair": {
+      "preferred_bias": "repo_truth_then_minimal_change_plan",
+      "notes": "Repair missions benefit from evidence-first discovery before implementation."
+    }
+  }
+}

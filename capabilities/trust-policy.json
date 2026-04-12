@@ -1,0 +1,10 @@
+{
+  "principle": "Trust policy informs choices; it should not suffocate ordinary project work.",
+  "default_behavior": "advise",
+  "hard_boundary": "block only host-critical or machine-integrity-threatening actions",
+  "source_handling": {
+    "trusted_local": "prefer when suitable",
+    "reviewed_external": "use when justified",
+    "unreviewed_external": "research and surface clearly; do not auto-block unless host risk is involved"
+  }
+}

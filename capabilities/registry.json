@@ -1,0 +1,231 @@
+{
+  "schema_version": "1.0",
+  "always_on_kernel": [
+    "coordinator",
+    "mission-compiler",
+    "repo-discovery",
+    "planner",
+    "reviewer",
+    "policy-auditor"
+  ],
+  "capabilities": [
+    {
+      "id": "research-pack",
+      "type": "agent-pack",
+      "summary": "Adds stronger external fact gathering, documentation analysis, and standards lookup workflows.",
+      "domains": [
+        "general",
+        "software",
+        "research",
+        "compliance"
+      ],
+      "triggers": [
+        "version-sensitive facts",
+        "official docs needed",
+        "external standards needed"
+      ],
+      "required_tools": [
+        "web or trusted docs access"
+      ],
+      "optional_tools": [
+        "MCP docs connectors"
+      ],
+      "activation_mode": "on_demand",
+      "resource_cost": "medium",
+      "risk_level": "low",
+      "install_source": "local pack",
+      "validation_requirements": [
+        "cite sources",
+        "separate facts from inferences"
+      ],
+      "trust_tier": "T1",
+      "approval_mode": "auto_if_needed",
+      "enablement": {
+        "install": "none",
+        "load": "on_demand",
+        "default": "disabled"
+      }
+    },
+    {
+      "id": "coding-pack",
+      "type": "skill-pack",
+      "summary": "Adds deeper implementation, patch planning, refactor checks, and code validation workflows.",
+      "domains": [
+        "software"
+      ],
+      "triggers": [
+        "multi-file changes",
+        "refactor",
+        "bug fix",
+        "feature implementation"
+      ],
+      "required_tools": [
+        "file read/write",
+        "bash/test runner"
+      ],
+      "optional_tools": [
+        "language-specific linters"
+      ],
+      "activation_mode": "on_demand",
+      "resource_cost": "medium",
+      "risk_level": "medium",
+      "install_source": "local pack",
+      "validation_requirements": [
+        "run narrowest useful tests first"
+      ],
+      "trust_tier": "T1",
+      "approval_mode": "auto_if_needed",
+      "enablement": {
+        "install": "none",
+        "load": "on_demand",
+        "default": "disabled"
+      }
+    },
+    {
+      "id": "browser-ui-pack",
+      "type": "plugin",
+      "summary": "Adds browser-driven validation for UI flows and visible behavior.",
+      "domains": [
+        "web",
+        "ui",
+        "qa"
+      ],
+      "triggers": [
+        "browser bug",
+        "UI validation",
+        "visual flow check"
+      ],
+      "required_tools": [
+        "browser integration or MCP"
+      ],
+      "optional_tools": [
+        "playwright or chrome tooling"
+      ],
+      "activation_mode": "on_demand",
+      "resource_cost": "high",
+      "risk_level": "medium",
+      "install_source": "marketplace/local",
+      "validation_requirements": [
+        "record steps and observed outcomes"
+      ],
+      "trust_tier": "T2",
+      "approval_mode": "ask",
+      "enablement": {
+        "install": "optional",
+        "load": "on_demand",
+        "default": "disabled"
+      }
+    },
+    {
+      "id": "data-db-pack",
+      "type": "mcp",
+      "summary": "Adds database truth checks and structured data querying.",
+      "domains": [
+        "data",
+        "backend",
+        "analytics"
+      ],
+      "triggers": [
+        "database validation",
+        "schema inspection",
+        "metrics truth"
+      ],
+      "required_tools": [
+        "DB connection"
+      ],
+      "optional_tools": [
+        "query templates"
+      ],
+      "activation_mode": "on_demand",
+      "resource_cost": "medium",
+      "risk_level": "medium",
+      "install_source": "MCP",
+      "validation_requirements": [
+        "read-only by default",
+        "document query intent"
+      ],
+      "trust_tier": "T2",
+      "approval_mode": "ask",
+      "enablement": {
+        "install": "optional",
+        "load": "on_demand",
+        "default": "disabled"
+      }
+    },
+    {
+      "id": "ops-deploy-pack",
+      "type": "plugin",
+      "summary": "Adds deployment, infrastructure, logs, and environment diagnostics workflows.",
+      "domains": [
+        "ops",
+        "infra",
+        "devops"
+      ],
+      "triggers": [
+        "deployment issue",
+        "runtime failure",
+        "environment mismatch"
+      ],
+      "required_tools": [
+        "shell access"
+      ],
+      "optional_tools": [
+        "cloud/hosting plugins",
+        "log connectors"
+      ],
+      "activation_mode": "on_demand",
+      "resource_cost": "high",
+      "risk_level": "high",
+      "install_source": "marketplace/local",
+      "validation_requirements": [
+        "guard destructive actions",
+        "prefer read-only diagnostics first"
+      ],
+      "trust_tier": "T2",
+      "approval_mode": "ask",
+      "enablement": {
+        "install": "optional",
+        "load": "on_demand",
+        "default": "disabled"
+      }
+    },
+    {
+      "id": "channels-events-pack",
+      "type": "plugin",
+      "summary": "Adds event-driven workflows using channels so running Claude sessions can react to CI, alerts, or webhook messages.",
+      "domains": [
+        "automation",
+        "ops",
+        "ci"
+      ],
+      "triggers": [
+        "external events needed",
+        "CI notifications",
+        "monitoring alerts"
+      ],
+      "required_tools": [
+        "claude.ai login",
+        "channel-capable Claude Code"
+      ],
+      "optional_tools": [
+        "MCP server that emits channel events"
+      ],
+      "activation_mode": "on_demand",
+      "resource_cost": "medium",
+      "risk_level": "medium",
+      "install_source": "marketplace/local",
+      "validation_requirements": [
+        "document event source",
+        "confirm channel availability"
+      ],
+      "trust_tier": "T2",
+      "approval_mode": "ask",
+      "enablement": {
+        "install": "optional",
+        "load": "on_demand",
+        "default": "disabled"
+      }
+    }
+  ],
+  "trust_policy_file": "capabilities/trust-policy.json"
+}

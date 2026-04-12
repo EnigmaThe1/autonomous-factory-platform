@@ -1,0 +1,11 @@
+{
+  "version": "v32",
+  "generated_at": null,
+  "strategy_biases": {
+    "iterative_execution_bias": 0.7,
+    "deep_design_bias": 0.55,
+    "exploration_before_commitment_bias": 0.65,
+    "parallelism_restraint_bias": 0.65,
+    "mid_mission_restrategy_bias": 0.75
+  }
+}

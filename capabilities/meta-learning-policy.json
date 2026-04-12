@@ -1,0 +1,18 @@
+{
+  "version": "v20",
+  "principle": "Refine heuristics softly over time using accumulated mission evidence, while preserving autonomy-first behavior.",
+  "tuning_targets": [
+    "evidence_channel_weights",
+    "phase_promotion_sensitivity",
+    "archetype_bias_strength",
+    "fallback_friction_threshold",
+    "live_feedback_adjustment_strength"
+  ],
+  "guardrails": [
+    "tuning should remain soft and reversible",
+    "no tuning change should become a hard gate by default",
+    "prefer gradual adjustments over abrupt swings",
+    "watch for overfitting to narrow mission types"
+  ],
+  "rule": "Use meta-learning to improve defaults, not to constrain intelligence."
+}

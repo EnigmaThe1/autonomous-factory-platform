@@ -1,0 +1,10 @@
+{
+  "id": "research-pack",
+  "description": "Curated optional capability pack for research-heavy missions.",
+  "includes": [
+    "researcher agent",
+    "source-citation workflow",
+    "official-docs preference"
+  ],
+  "default_activation": "on_demand"
+}

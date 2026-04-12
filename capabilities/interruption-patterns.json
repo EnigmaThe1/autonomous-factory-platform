@@ -1,0 +1,25 @@
+{
+  "version": "v34",
+  "patterns": {
+    "partial_invalidation": {
+      "preferred_response": "salvage_and_retarget",
+      "notes": "When only part of the mission is invalidated, preserve valid work and retarget the rest."
+    },
+    "vague_redirect": {
+      "preferred_response": "interpret_then_adapt",
+      "notes": "Vague steering often benefits from safe interpretation before asking for clarification."
+    },
+    "hard_priority_shift": {
+      "preferred_response": "pause_then_resequence",
+      "notes": "Large priority changes often benefit from resequencing while preserving useful completed work."
+    },
+    "style_or_output_correction": {
+      "preferred_response": "adapt_without_restart",
+      "notes": "Style corrections should usually change output form without discarding valid substance."
+    },
+    "operator_stop_and_reframe": {
+      "preferred_response": "bounded_reset",
+      "notes": "Some strong reframes justify resetting only the invalid parts, not the full mission history."
+    }
+  }
+}

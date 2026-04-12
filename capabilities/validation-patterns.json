@@ -1,0 +1,21 @@
+{
+  "version": "v31",
+  "patterns": {
+    "code_change": {
+      "preferred_validation_shape": "targeted execution plus regression-aware checks",
+      "notes": "Code changes often benefit from focused execution and regression validation rather than maximum test breadth."
+    },
+    "research_answer": {
+      "preferred_validation_shape": "cross-source agreement plus freshness fit",
+      "notes": "Research answers benefit from source agreement and freshness-sensitive validation."
+    },
+    "automation_flow": {
+      "preferred_validation_shape": "real-path verification plus outcome proof",
+      "notes": "Automation work benefits from testing the real flow and verifying actual outcomes."
+    },
+    "refactor_repair": {
+      "preferred_validation_shape": "before/after behavior confidence plus targeted regression checks",
+      "notes": "Repairs benefit from proving the fix and guarding nearby behavior."
+    }
+  }
+}

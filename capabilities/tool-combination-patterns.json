@@ -1,0 +1,35 @@
+{
+  "version": "v23",
+  "patterns": {
+    "research_planning": {
+      "preferred_tools": [
+        "builtin_read_search",
+        "research_pack",
+        "trusted_web_or_docs"
+      ],
+      "notes": "Research-heavy missions often benefit from lightweight discovery before heavier external surfaces."
+    },
+    "web_app_build": {
+      "preferred_tools": [
+        "coding_pack",
+        "browser_ui_pack",
+        "data_db_pack"
+      ],
+      "notes": "Product builds often benefit from coding + browser + DB combinations as phases mature."
+    },
+    "deployment_runtime": {
+      "preferred_tools": [
+        "ops_deploy_pack",
+        "logs_or_runtime_surface"
+      ],
+      "notes": "Runtime missions often benefit from earlier operational surfaces and validation tools."
+    },
+    "refactor_repair": {
+      "preferred_tools": [
+        "builtin_read_search",
+        "coding_pack"
+      ],
+      "notes": "Repair missions often benefit from repo-truth discovery and focused code tooling before heavier extras."
+    }
+  }
+}

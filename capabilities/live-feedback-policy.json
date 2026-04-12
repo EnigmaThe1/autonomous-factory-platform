@@ -1,0 +1,20 @@
+{
+  "version": "v18",
+  "principle": "Capability decisions should adapt to real execution feedback, not remain frozen after planning.",
+  "signal_types": [
+    "execution_friction",
+    "fallback_failure",
+    "validation_blockage",
+    "smooth_progress_without_capability",
+    "unnecessary_activation",
+    "emerging_runtime_need"
+  ],
+  "adjustment_directions": [
+    "reinforce",
+    "promote",
+    "keep",
+    "demote",
+    "retire"
+  ],
+  "default_rule": "Use runtime evidence to refine earlier capability decisions while preserving autonomy-first behavior."
+}

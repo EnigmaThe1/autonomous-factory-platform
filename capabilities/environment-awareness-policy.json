@@ -1,0 +1,21 @@
+{
+  "guidance_mode": "advisory",
+  "detect": [
+    "os",
+    "shell",
+    "workspace",
+    "container",
+    "devcontainer",
+    "ci",
+    "remote_session",
+    "python",
+    "node",
+    "package_managers"
+  ],
+  "priority": [
+    "workspace_truth",
+    "host_safety",
+    "execution_leverage"
+  ],
+  "note": "Environment awareness should inform decisions without shrinking project-space autonomy."
+}

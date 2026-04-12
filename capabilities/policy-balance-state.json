@@ -1,0 +1,11 @@
+{
+  "version": "v24",
+  "generated_at": null,
+  "policy_biases": {
+    "soft_guidance_strength": 0.55,
+    "trust_caution_bias": 0.5,
+    "host_boundary_clarity_bias": 0.75,
+    "project_space_freedom_bias": 0.85,
+    "autonomy_preservation_bias": 0.9
+  }
+}

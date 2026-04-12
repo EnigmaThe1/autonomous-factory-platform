@@ -1,0 +1,27 @@
+{
+  "version": "v15",
+  "principle": "Keep capabilities suggested by default; stage only when mission and environment evidence justify near-term use.",
+  "default_decision": "suggested",
+  "promotion_guidelines": {
+    "promote_to_staged_for_activation_when": [
+      "the current or next mission phase clearly benefits from the capability",
+      "fallback approaches are materially weaker or slower",
+      "environment checks indicate clean fit",
+      "staging overhead is justified by expected value"
+    ],
+    "keep_suggested_when": [
+      "the capability is optional or nice-to-have",
+      "current progress is not blocked",
+      "the needed phase is distant or uncertain",
+      "lighter alternatives exist"
+    ]
+  },
+  "decision_signals": [
+    "mission_phase_proximity",
+    "execution_blocking_level",
+    "fallback_strength",
+    "environment_fit",
+    "expected_acceleration",
+    "staging_cost"
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "version": "v39",
+  "principle": "Use effort proportionally, balancing quality, certainty, time, and cost so the system avoids both wasteful overwork and premature stopping.",
+  "learning_targets": [
+    "effort_payoff_fit",
+    "exploration_budget_quality",
+    "diminishing_returns_detection",
+    "good_enough_judgment",
+    "token_time_efficiency",
+    "mission_pattern_cost_fit"
+  ],
+  "guardrails": [
+    "do not treat infinite exploration as inherently better",
+    "do not stop early when uncertainty or risk still demands more work",
+    "prefer proportionate effort over maximal effort"
+  ],
+  "rule": "Use mission outcomes to improve efficiency and cost judgment without reducing the system to shallow shortcuts."
+}

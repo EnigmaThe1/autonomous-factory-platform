@@ -1,0 +1,18 @@
+{
+  "version": "v15",
+  "triggers": {
+    "browser_ui_pack": [
+      "mission includes browser validation or UI regression checks",
+      "visual workflow verification becomes active"
+    ],
+    "data_db_pack": [
+      "mission requires schema inspection, queries, or DB-backed validation"
+    ],
+    "ops_deploy_pack": [
+      "mission reaches deployment, infra, or runtime diagnostics phases"
+    ],
+    "research_pack": [
+      "mission requires substantial external documentation or latest-tool research"
+    ]
+  }
+}

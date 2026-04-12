@@ -1,0 +1,30 @@
+{
+  "version": "v16",
+  "maps": {
+    "research_pack": [
+      "research",
+      "planning",
+      "requirements_validation"
+    ],
+    "coding_pack": [
+      "implementation",
+      "refactor",
+      "integration"
+    ],
+    "browser_ui_pack": [
+      "ui_validation",
+      "browser_regression",
+      "acceptance_testing"
+    ],
+    "data_db_pack": [
+      "schema_analysis",
+      "data_validation",
+      "integration"
+    ],
+    "ops_deploy_pack": [
+      "runtime_diagnostics",
+      "deployment",
+      "post_deploy_validation"
+    ]
+  }
+}

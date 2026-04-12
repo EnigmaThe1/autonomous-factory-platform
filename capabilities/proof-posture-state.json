@@ -1,0 +1,11 @@
+{
+  "version": "v36",
+  "generated_at": null,
+  "posture_biases": {
+    "proof_labeling_bias": 0.8,
+    "assumption_visibility_bias": 0.8,
+    "acceptable_uncertainty_bias": 0.65,
+    "overclaim_avoidance_bias": 0.85,
+    "unknown_surfacing_bias": 0.75
+  }
+}

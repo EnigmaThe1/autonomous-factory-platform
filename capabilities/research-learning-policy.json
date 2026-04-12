@@ -1,0 +1,19 @@
+{
+  "version": "v30",
+  "principle": "Improve research quality over time by learning better discovery scope, source choice, freshness sensitivity, and handoff quality without making every mission research-heavy.",
+  "learning_targets": [
+    "source_selection_quality",
+    "freshness_judgment_quality",
+    "research_scope_control",
+    "research_to_action_handoff_quality",
+    "over_browsing_reduction",
+    "mission_pattern_research_fit"
+  ],
+  "guardrails": [
+    "research should remain purposeful and proportionate",
+    "do not turn every mission into a browsing-heavy workflow",
+    "prefer authoritative and useful sources over source volume",
+    "use freshness sensitivity where it matters, not everywhere"
+  ],
+  "rule": "Use mission outcomes to improve research quality and handoff without encouraging unnecessary research sprawl."
+}

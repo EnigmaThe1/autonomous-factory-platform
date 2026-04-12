@@ -1,0 +1,23 @@
+{
+  "version": "v36",
+  "principle": "The system should distinguish proven, inferred, assumed, and unknown states explicitly enough to act intelligently without false certainty.",
+  "classes": [
+    "proven",
+    "inferred",
+    "assumed",
+    "unknown",
+    "partially_proven"
+  ],
+  "learning_targets": [
+    "overclaim_reduction",
+    "assumption_visibility",
+    "acceptable_uncertainty_judgment",
+    "proof_labeling_quality",
+    "unknown_handling_quality"
+  ],
+  "guardrails": [
+    "do not represent inference as proof",
+    "do not treat all uncertainty as blocking",
+    "surface important uncertainty clearly"
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "default_execution_mode": "single_agent",
+  "execution_modes": {
+    "single_agent": {
+      "description": "One main agent may complete the mission and opportunistically use specialists when useful."
+    },
+    "specialist_agents": {
+      "description": "Use specialist agents whenever they improve quality, speed, or coverage."
+    },
+    "agent_team": {
+      "description": "Use a broader team when parallel work, independent validation, or domain separation genuinely helps."
+    }
+  },
+  "escalation_triggers": [
+    "mission naturally decomposes into independent work",
+    "specialists can improve reasoning or validation quality",
+    "parallel exploration is useful",
+    "the main agent judges broader coordination worthwhile"
+  ],
+  "deescalation_triggers": [
+    "the mission has converged to a narrow path",
+    "coordination adds more friction than value"
+  ],
+  "policy_mode": "advisory",
+  "non_negotiable_boundary": "Do not damage the host machine or critical system areas."
+}

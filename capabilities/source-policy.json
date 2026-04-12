@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "default_for_unknown_sources": "deny",
+  "default_for_discovered_sources": "ask",
+  "default_for_reviewed_sources": "ask",
+  "default_for_approved_sources": "allow",
+  "prefer_local_mirror_for_approved": true,
+  "allow_live_remote_activation": false,
+  "require_operator_approval_for_install": true
+}

@@ -1,0 +1,23 @@
+{
+  "version": "v16",
+  "principle": "Capability promotion should follow mission phase proximity, not abstract long-term possibility.",
+  "default_state": "suggested",
+  "states": [
+    "suggested",
+    "staged_for_activation",
+    "defer_until_trigger"
+  ],
+  "promotion_rules": {
+    "suggested": "Default when capability is helpful but not tied to the current or next imminent phase.",
+    "staged_for_activation": "Use when the capability supports the current phase or the next likely phase soon enough to justify preparation.",
+    "defer_until_trigger": "Use when a known later trigger exists but present evidence is too weak for staging."
+  },
+  "phase_signals": [
+    "current_phase_match",
+    "next_phase_match",
+    "phase_distance",
+    "waiting_cost",
+    "premature_staging_cost",
+    "fallback_strength"
+  ]
+}

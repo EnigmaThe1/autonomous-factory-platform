@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Autonomous Factory</title>
+<link rel="icon" href="/favicon.ico" type="image/svg+xml">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0d1117;--bg-s:#161b22;--bg-c:#1c2129;--bg-h:#21262d;--bg-i:#0d1117;
+  --bd:#30363d;--bd2:#484f58;--tx:#c9d1d9;--tx2:#8b949e;--tx1:#f0f6fc;
+  --ac:#58a6ff;--ac2:#1f6feb;--gn:#3fb950;--gn2:#238636;--yl:#d29922;
+  --og:#db6d28;--rd:#f85149;--pp:#bc8cff;--pk:#f778ba;
+  --r:6px;--r2:10px;--f:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+  --fm:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;
+}
+html,body{height:100%;font-family:var(--f);font-size:14px;color:var(--tx);background:var(--bg)}
+a{color:var(--ac);text-decoration:none}button{cursor:pointer;font-family:var(--f)}
+::-webkit-scrollbar{width:8px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--bd);border-radius:4px}
+
+/* Layout */
+#app{display:flex;height:100vh;overflow:hidden}
+#sidebar{width:56px;background:var(--bg-s);border-right:1px solid var(--bd);display:flex;flex-direction:column;align-items:center;padding:12px 0;gap:4px;flex-shrink:0}
+.logo{font-size:18px;margin-bottom:16px;color:var(--ac);font-weight:700;letter-spacing:-1px}
+.nb{width:40px;height:40px;border:none;background:0;color:var(--tx2);border-radius:var(--r);display:flex;align-items:center;justify-content:center;font-size:18px;transition:.15s;position:relative}
+.nb:hover,.nb.on{background:var(--bg-h);color:var(--tx1)}
+.nb.on::before{content:'';position:absolute;left:0;top:8px;bottom:8px;width:3px;background:var(--ac);border-radius:0 2px 2px 0}
+.nb .badge{position:absolute;top:4px;right:4px;min-width:16px;height:16px;background:var(--rd);color:#fff;font-size:10px;border-radius:8px;display:flex;align-items:center;justify-content:center;padding:0 4px}
+.spacer{flex:1}
+#main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+#topbar{height:48px;background:var(--bg-s);border-bottom:1px solid var(--bd);display:flex;align-items:center;padding:0 20px;gap:12px;flex-shrink:0}
+#topbar h1{font-size:15px;font-weight:600;color:var(--tx1)}
+#bc{color:var(--tx2);font-size:13px}
+.tbs{flex:1}
+.conn{font-size:12px;color:var(--tx2);display:flex;align-items:center;gap:6px}
+.conn .dot{width:8px;height:8px;border-radius:50%;background:var(--gn)}
+#content{flex:1;overflow-y:auto;padding:24px}
+
+/* Components */
+.page{display:none}.page.on{display:block}
+.card{background:var(--bg-c);border:1px solid var(--bd);border-radius:var(--r2);overflow:hidden}
+.card+.card{margin-top:16px}
+.ch{padding:14px 18px;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:10px}
+.ch h2{font-size:14px;font-weight:600;color:var(--tx1)}
+.ch .cnt{background:var(--bg-h);color:var(--tx2);font-size:11px;padding:2px 8px;border-radius:10px}
+.cb{padding:16px 18px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+@media(max-width:900px){.g2,.g3,.g4{grid-template-columns:1fr}}
+
+.sc{background:var(--bg-c);border:1px solid var(--bd);border-radius:var(--r2);padding:18px}
+.sc .lb{font-size:12px;color:var(--tx2);text-transform:uppercase;letter-spacing:.5px}
+.sc .vl{font-size:28px;font-weight:700;color:var(--tx1);margin-top:4px}
+.sc .sub{font-size:12px;color:var(--tx2);margin-top:4px}
+
+.st{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:3px 10px;border-radius:12px;text-transform:uppercase;letter-spacing:.3px}
+.st-pending{background:#30363d;color:var(--tx2)}
+.st-compiling,.st-running,.st-ready{background:rgba(88,166,255,.15);color:var(--ac)}
+.st-compiled,.st-queued{background:rgba(188,140,255,.15);color:var(--pp)}
+.st-completed{background:rgba(63,185,80,.15);color:var(--gn)}
+.st-failed{background:rgba(248,81,73,.15);color:var(--rd)}
+.st-blocked{background:rgba(210,153,34,.15);color:var(--yl)}
+.st-cancelled,.st-skipped{background:#30363d;color:var(--tx2)}
+.st-approved{background:rgba(63,185,80,.15);color:var(--gn)}
+.st-rejected{background:rgba(248,81,73,.15);color:var(--rd)}
+
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 16px;border:1px solid var(--bd);background:var(--bg-c);color:var(--tx);border-radius:var(--r);font-size:13px;font-weight:500;transition:.15s}
+.btn:hover{background:var(--bg-h);border-color:var(--bd2);color:var(--tx1)}
+.btn-p{background:var(--ac2);border-color:var(--ac2);color:#fff}.btn-p:hover{background:var(--ac)}
+.btn-g{background:var(--gn2);border-color:var(--gn2);color:#fff}.btn-g:hover{background:var(--gn)}
+.btn-d{background:rgba(248,81,73,.15);border-color:var(--rd);color:var(--rd)}.btn-d:hover{background:var(--rd);color:#fff}
+.btn-s{padding:4px 10px;font-size:12px}
+
+.fg{margin-bottom:14px}
+.fg label{display:block;font-size:12px;font-weight:600;color:var(--tx2);margin-bottom:5px;text-transform:uppercase;letter-spacing:.3px}
+.fg input,.fg textarea,.fg select{width:100%;padding:8px 12px;background:var(--bg-i);border:1px solid var(--bd);border-radius:var(--r);color:var(--tx);font-size:13px;font-family:var(--f)}
+.fg input:focus,.fg textarea:focus{outline:0;border-color:var(--ac);box-shadow:0 0 0 3px rgba(88,166,255,.15)}
+.fg textarea{resize:vertical;min-height:80px}
+.fg .hn{font-size:11px;color:var(--tx2);margin-top:3px}
+
+.tbl{width:100%;border-collapse:collapse}
+.tbl th{text-align:left;font-size:11px;font-weight:600;color:var(--tx2);text-transform:uppercase;letter-spacing:.5px;padding:10px 12px;border-bottom:1px solid var(--bd)}
+.tbl td{padding:10px 12px;border-bottom:1px solid var(--bd);font-size:13px;vertical-align:middle}
+.tbl tr:last-child td{border-bottom:0}
+.tbl tr:hover td{background:var(--bg-h)}
+.mono{font-family:var(--fm);font-size:12px}
+
+/* Tabs */
+.tabs{display:flex;gap:0;border-bottom:1px solid var(--bd);margin-bottom:16px}
+.tab{padding:10px 18px;font-size:13px;font-weight:500;color:var(--tx2);border:none;background:0;border-bottom:2px solid transparent;cursor:pointer;transition:.15s}
+.tab:hover{color:var(--tx)}.tab.on{color:var(--ac);border-bottom-color:var(--ac)}
+.tp{display:none}.tp.on{display:block}
+
+/* Mission list */
+.mi{padding:12px 18px;border-bottom:1px solid var(--bd);cursor:pointer;transition:.15s;display:flex;align-items:center;gap:12px}
+.mi:hover{background:var(--bg-h)}.mi:last-child{border-bottom:0}
+.mi .tt{font-weight:600;color:var(--tx1);font-size:13px;flex:1}
+.mi .tm{font-size:11px;color:var(--tx2)}
+
+/* Pipeline */
+.pipe{display:flex;align-items:center;gap:4px;padding:16px 0}
+.ps{flex:1;text-align:center}
+.ps .pi{width:48px;height:48px;border-radius:50%;border:2px solid var(--bd);display:flex;align-items:center;justify-content:center;margin:0 auto 6px;font-size:20px;background:var(--bg-c);transition:.3s}
+.ps .pn{font-size:11px;font-weight:600;color:var(--tx2);text-transform:uppercase;letter-spacing:.5px}
+.ps .pst{font-size:10px;margin-top:3px}
+.pc{width:32px;height:2px;background:var(--bd);flex-shrink:0;margin-bottom:20px}
+.ps.done .pi{border-color:var(--gn);color:var(--gn);background:rgba(63,185,80,.1)}
+.ps.run .pi{border-color:var(--ac);color:var(--ac);background:rgba(88,166,255,.15);animation:pulse 1.5s ease infinite}
+.ps.fail .pi{border-color:var(--rd);color:var(--rd);background:rgba(248,81,73,.1)}
+.ps.blk .pi{border-color:var(--yl);color:var(--yl);background:rgba(210,153,34,.1)}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(88,166,255,.3)}50%{box-shadow:0 0 0 8px rgba(88,166,255,0)}}
+
+/* Timeline */
+.tl{position:relative;padding-left:24px}
+.tl::before{content:'';position:absolute;left:8px;top:0;bottom:0;width:2px;background:var(--bd)}
+.ti{position:relative;padding:8px 0 16px}
+.ti::before{content:'';position:absolute;left:-20px;top:12px;width:10px;height:10px;border-radius:50%;border:2px solid var(--bd);background:var(--bg-c)}
+.ti.s-info::before{border-color:var(--ac)}.ti.s-warning::before{border-color:var(--yl)}.ti.s-error::before{border-color:var(--rd)}.ti.s-critical::before{border-color:var(--rd);background:var(--rd)}
+.ti .th{display:flex;align-items:center;gap:8px;font-size:12px}
+.ti .tc{font-weight:600;color:var(--tx1)}.ti .tt2{color:var(--tx2)}
+.ti .ttm{margin-left:auto;color:var(--tx2);font-size:11px}
+.ti .tb{font-size:12px;color:var(--tx2);margin-top:4px;font-family:var(--fm);background:var(--bg);padding:6px 10px;border-radius:var(--r);max-height:120px;overflow:auto}
+
+/* Findings */
+.fd{padding:10px 14px;border-left:3px solid var(--bd);margin-bottom:8px;background:var(--bg);border-radius:0 var(--r) var(--r) 0}
+.fd.s-info{border-left-color:var(--ac)}.fd.s-warning{border-left-color:var(--yl)}.fd.s-error{border-left-color:var(--og)}.fd.s-blocking{border-left-color:var(--rd)}
+.fd .fh{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600}
+.fd .fm{font-size:12px;color:var(--tx2);margin-top:3px}
+
+/* Modal */
+.mo{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:1000}
+.mo.open{display:flex}
+.md{background:var(--bg-s);border:1px solid var(--bd);border-radius:var(--r2);width:600px;max-width:95vw;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 8px 24px rgba(0,0,0,.6)}
+.mh{padding:16px 20px;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:10px}
+.mh h2{font-size:15px;font-weight:600;color:var(--tx1);flex:1}
+.mx{background:0;border:0;color:var(--tx2);font-size:20px;padding:4px;line-height:1}.mx:hover{color:var(--tx1)}
+.mb{padding:20px;overflow-y:auto;flex:1}
+.mf{padding:14px 20px;border-top:1px solid var(--bd);display:flex;justify-content:flex-end;gap:8px}
+
+/* Dropzone */
+.dz{border:2px dashed var(--bd);border-radius:var(--r);padding:24px;text-align:center;color:var(--tx2);cursor:pointer;transition:.15s}
+.dz:hover,.dz.over{border-color:var(--ac);background:rgba(88,166,255,.05);color:var(--ac)}
+.dz input[type="file"]{display:none}
+.fl{margin-top:10px}.fi{display:flex;align-items:center;gap:8px;padding:5px 8px;background:var(--bg);border-radius:var(--r);margin-bottom:4px;font-size:12px}
+.fi .fn{flex:1;font-family:var(--fm)}.fi .fs{color:var(--tx2)}
+.fi .fr{background:0;border:0;color:var(--tx2);cursor:pointer;font-size:14px}.fi .fr:hover{color:var(--rd)}
+
+/* Settings */
+.sr{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--bd)}
+.sr:last-child{border-bottom:0}
+.sr .si{flex:1;min-width:0}
+.sr .sk{font-size:12px;font-weight:600;color:var(--tx1);font-family:var(--fm)}
+.sr .sd{font-size:11px;color:var(--tx2);margin-top:2px}
+.sr input,.sr select{width:280px;padding:6px 10px;background:var(--bg-i);border:1px solid var(--bd);border-radius:var(--r);color:var(--tx);font-size:13px}
+.sr input:focus{outline:0;border-color:var(--ac)}
+.sr .sa{display:flex;gap:4px}
+
+/* Approval */
+.ac{background:var(--bg);border:1px solid var(--bd);border-radius:var(--r);padding:14px;margin-bottom:10px}
+.ac .ar{font-weight:600;color:var(--tx1);margin-bottom:6px}
+.ac .am{font-size:12px;color:var(--tx2);display:flex;gap:12px;margin-bottom:10px}
+.ac .aa{display:flex;gap:8px}
+
+/* Evidence bar */
+.eb{height:6px;border-radius:3px;background:var(--bg-h);overflow:hidden;margin-top:4px}
+.eb .ef{height:100%;border-radius:3px;transition:width .3s}
+.ef.green{background:var(--gn)}.ef.yellow{background:var(--yl)}.ef.red{background:var(--rd)}
+
+/* Workspace */
+.ws-layout{display:flex;height:calc(100vh - 120px);gap:0}
+.ws-side{width:280px;border-right:1px solid var(--bd);background:var(--bg-c);display:flex;flex-direction:column;flex-shrink:0;overflow:hidden}
+.ws-side-hdr{padding:10px 14px;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:8px}
+.ws-side-hdr input{flex:1;padding:5px 8px;background:var(--bg-i);border:1px solid var(--bd);border-radius:var(--r);color:var(--tx);font-size:12px;font-family:var(--fm)}
+.ws-side-hdr input:focus{outline:0;border-color:var(--ac)}
+.ws-tree{flex:1;overflow-y:auto;padding:4px 0;font-size:13px}
+.ws-node{cursor:pointer;user-select:none}
+.ws-node-row{display:flex;align-items:center;gap:4px;padding:4px 8px;border-radius:var(--r);transition:.1s}
+.ws-node-row:hover{background:var(--bg-h)}
+.ws-node-row.sel{background:rgba(88,166,255,.15);color:var(--ac)}
+.ws-node-icon{width:16px;text-align:center;font-size:12px;flex-shrink:0}
+.ws-node-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ws-node-sz{font-size:11px;color:var(--tx2);flex-shrink:0}
+.ws-children{padding-left:16px}
+.ws-main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.ws-toolbar{padding:10px 14px;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.ws-path{font-family:var(--fm);font-size:12px;color:var(--tx2);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ws-content{flex:1;overflow:auto;padding:0}
+.ws-viewer{padding:16px;font-family:var(--fm);font-size:13px;line-height:1.6;white-space:pre-wrap;color:var(--tx);tab-size:4}
+.ws-grid{padding:8px}
+.ws-grid-item{display:flex;align-items:center;gap:10px;padding:8px 14px;border-bottom:1px solid var(--bd);cursor:pointer;transition:.1s}
+.ws-grid-item:hover{background:var(--bg-h)}
+.ws-grid-item:last-child{border-bottom:0}
+.ws-grid-icon{font-size:16px;width:20px;text-align:center}
+.ws-grid-name{flex:1;font-size:13px;color:var(--tx1)}
+.ws-grid-meta{font-size:11px;color:var(--tx2);text-align:right}
+.ws-info-bar{padding:8px 14px;background:var(--bg-s);border-bottom:1px solid var(--bd);font-size:12px;color:var(--tx2);display:flex;gap:16px}
+.ws-crumbs{display:flex;align-items:center;gap:2px;font-size:12px}
+.ws-crumbs span{cursor:pointer;color:var(--ac);padding:2px 4px;border-radius:3px}
+.ws-crumbs span:hover{background:var(--bg-h)}
+.ws-crumbs .sep{color:var(--tx2);cursor:default}
+.ws-crumbs .sep:hover{background:none}
+.ws-line-nums{counter-reset:line;padding:16px 0}
+.ws-line{display:flex;font-family:var(--fm);font-size:13px;line-height:1.6}
+.ws-line::before{counter-increment:line;content:counter(line);width:48px;text-align:right;padding-right:12px;color:var(--tx2);font-size:12px;flex-shrink:0;user-select:none}
+.ws-line-text{white-space:pre;tab-size:4;overflow-x:auto;flex:1}
+
+/* Empty */
+.empty{text-align:center;padding:40px;color:var(--tx2);font-size:13px}
+.empty .ei{font-size:32px;margin-bottom:10px;opacity:.5}
+
+/* Toast */
+#toasts{position:fixed;top:16px;right:16px;z-index:2000;display:flex;flex-direction:column;gap:8px}
+.toast{padding:10px 16px;background:var(--bg-c);border:1px solid var(--bd);border-radius:var(--r);font-size:13px;color:var(--tx);box-shadow:0 8px 24px rgba(0,0,0,.6);animation:si .2s ease;max-width:360px}
+.toast.ok{border-left:3px solid var(--gn)}.toast.err{border-left:3px solid var(--rd)}.toast.inf{border-left:3px solid var(--ac)}
+@keyframes si{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+
+/* Loading spinner */
+.loading{display:flex;align-items:center;justify-content:center;padding:40px;color:var(--tx2)}
+.spin{width:20px;height:20px;border:2px solid var(--bd);border-top-color:var(--ac);border-radius:50%;animation:sp .6s linear infinite;margin-right:10px}
+@keyframes sp{to{transform:rotate(360deg)}}
+
+/* Evidence detail card */
+.ev-card{background:var(--bg);border:1px solid var(--bd);border-radius:var(--r);padding:12px;margin-bottom:10px}
+.ev-card h4{font-size:12px;font-weight:600;color:var(--tx1);margin-bottom:8px}
+.ev-list{font-size:12px;color:var(--tx2)}
+.ev-list div{padding:2px 0}
+.ev-met{color:var(--gn);font-weight:600;font-size:12px}
+.ev-not{color:var(--rd);font-weight:600;font-size:12px}
+</style>
+</head>
+<body>
+<div id="app">
+  <nav id="sidebar">
+    <div class="logo">AF</div>
+    <button class="nb on" data-p="missions" title="Missions">&#x1f3af;</button>
+    <button class="nb" data-p="approvals" title="Approvals"><span>&#x2714;</span><span class="badge" id="abadge" style="display:none">0</span></button>
+    <button class="nb" data-p="workspace" title="Workspace">&#x1f4c2;</button>
+    <button class="nb" data-p="diagnostics" title="Diagnostics">&#x1f4ca;</button>
+    <button class="nb" data-p="settings" title="Settings">&#x2699;</button>
+    <div class="spacer"></div>
+    <button class="nb" data-p="about" title="About">&#x2139;</button>
+  </nav>
+  <div id="main">
+    <header id="topbar">
+      <h1 id="ptitle">Missions</h1>
+      <span id="bc"></span>
+      <div class="tbs"></div>
+      <div class="conn"><span class="dot" id="cdot"></span><span id="ctext">Connected</span></div>
+    </header>
+    <div id="content">
+
+<!-- MISSIONS -->
+<div class="page on" id="p-missions">
+  <div id="ml-header" style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+    <h2 style="font-size:18px;color:var(--tx1);flex:1">Missions</h2>
+    <button class="btn btn-p" onclick="openNM()">+ New Mission</button>
+  </div>
+  <div id="ml-wrap"><div class="card"><div id="ml"><div class="loading"><div class="spin"></div>Loading missions...</div></div></div></div>
+
+  <div id="md" style="display:none">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+      <button class="btn btn-s" onclick="closeMD()">&larr; Back</button>
+      <h2 id="md-t" style="font-size:16px;color:var(--tx1);flex:1"></h2>
+      <span id="md-s"></span>
+    </div>
+    <div class="card" style="margin-bottom:16px"><div class="ch"><h2>Agent Pipeline</h2></div><div class="cb"><div class="pipe" id="md-pipe"></div></div></div>
+
+    <div class="tabs" id="md-tabs">
+      <button class="tab on" data-t="mdt-ov">Overview</button>
+      <button class="tab" data-t="mdt-ct">Contract</button>
+      <button class="tab" data-t="mdt-wi">Work Items</button>
+      <button class="tab" data-t="mdt-ev">Evidence</button>
+      <button class="tab" data-t="mdt-fd">Findings</button>
+      <button class="tab" data-t="mdt-tl">Events</button>
+      <button class="tab" data-t="mdt-ar">Artifacts</button>
+      <button class="tab" data-t="mdt-rp">Reports</button>
+    </div>
+
+    <div class="tp on" id="mdt-ov">
+      <div class="g2">
+        <div class="card"><div class="ch"><h2>Details</h2></div><div class="cb">
+          <table class="tbl">
+            <tr><td style="color:var(--tx2);width:140px">ID</td><td class="mono" id="md-id"></td></tr>
+            <tr><td style="color:var(--tx2)">Status</td><td id="md-s2"></td></tr>
+            <tr><td style="color:var(--tx2)">Created</td><td id="md-cr"></td></tr>
+            <tr><td style="color:var(--tx2)">Updated</td><td id="md-up"></td></tr>
+            <tr><td style="color:var(--tx2)">Workspace</td><td id="md-ws"></td></tr>
+            <tr><td style="color:var(--tx2)">Step Budget</td><td id="md-sb"></td></tr>
+            <tr><td style="color:var(--tx2)">Timeout</td><td id="md-to"></td></tr>
+            <tr><td style="color:var(--tx2)">Verdict</td><td id="md-vd"></td></tr>
+          </table>
+        </div></div>
+        <div class="card"><div class="ch"><h2>Prompt</h2></div><div class="cb">
+          <pre id="md-pr" style="white-space:pre-wrap;font-size:13px;color:var(--tx);font-family:var(--fm);line-height:1.5"></pre>
+        </div></div>
+      </div>
+      <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap" id="md-act">
+        <button class="btn btn-g" onclick="mAct('start')" id="b-start">Start Mission</button>
+        <button class="btn btn-p" onclick="mAct('advance')" id="b-advance">Advance</button>
+        <button class="btn" onclick="mAct('compile')" id="b-compile">Re-compile</button>
+        <button class="btn" onclick="openUL()">Upload Files</button>
+        <button class="btn btn-d" onclick="mAct('cancel')" id="b-cancel">Cancel</button>
+      </div>
+    </div>
+
+    <div class="tp" id="mdt-ct"><div class="card"><div class="ch"><h2>Compiled Contract</h2></div><div class="cb" id="md-ct-b"><div class="empty">Not compiled yet</div></div></div></div>
+
+    <div class="tp" id="mdt-wi"><div class="card"><div class="ch"><h2>Work Items</h2><span class="cnt" id="wi-cnt">0</span></div><div id="md-wi-l"></div></div></div>
+
+    <div class="tp" id="mdt-ev">
+      <div id="md-ev-l"><div class="loading"><div class="spin"></div>Loading evidence...</div></div>
+    </div>
+
+    <div class="tp" id="mdt-fd"><div class="card"><div class="ch"><h2>Compiler Findings</h2></div><div class="cb" id="md-fd-l"><div class="empty">No findings</div></div></div></div>
+
+    <div class="tp" id="mdt-tl"><div class="card"><div class="ch"><h2>Event Timeline</h2><span class="cnt" id="ev-cnt">0</span></div><div class="cb"><div class="tl" id="md-tl-l"><div class="empty">No events</div></div></div></div></div>
+
+    <div class="tp" id="mdt-ar"><div class="card"><div class="ch"><h2>Artifacts &amp; Uploads</h2><span class="cnt" id="ar-cnt">0</span></div><div class="cb">
+      <div class="dz" id="dd-dz" onclick="E('dd-fi').click()"><input type="file" id="dd-fi" multiple>Drop files here or click to upload</div>
+      <div id="md-ar-l" style="margin-top:12px"></div>
+    </div></div></div>
+
+    <div class="tp" id="mdt-rp"><div class="card"><div class="ch"><h2>Reports</h2><span class="cnt" id="rp-cnt">0</span></div><div class="cb" id="md-rp-l"><div class="empty">No reports yet</div></div></div></div>
+  </div>
+</div>
+
+<!-- APPROVALS -->
+<div class="page" id="p-approvals">
+  <h2 style="font-size:18px;color:var(--tx1);margin-bottom:16px">Approval Queue</h2>
+  <div id="ap-l"><div class="loading"><div class="spin"></div>Loading...</div></div>
+</div>
+
+<!-- DIAGNOSTICS -->
+<div class="page" id="p-diagnostics">
+  <h2 style="font-size:18px;color:var(--tx1);margin-bottom:16px">System Diagnostics</h2>
+  <div class="g4" id="d-stats">
+    <div class="sc"><div class="lb">Total Missions</div><div class="vl" id="d-tm">-</div></div>
+    <div class="sc"><div class="lb">Running</div><div class="vl" id="d-rn">-</div></div>
+    <div class="sc"><div class="lb">Pending Approvals</div><div class="vl" id="d-ap">-</div></div>
+    <div class="sc"><div class="lb">Total Events</div><div class="vl" id="d-ev">-</div></div>
+  </div>
+  <div class="g2" style="margin-top:16px">
+    <div class="card"><div class="ch"><h2>Missions by Status</h2></div><div class="cb" id="d-mb"></div></div>
+    <div class="card"><div class="ch"><h2>Work Items by Status</h2></div><div class="cb" id="d-wb"></div></div>
+  </div>
+  <div class="card" style="margin-top:16px">
+    <div class="ch"><h2>Recent System Events</h2>
+      <div style="margin-left:auto"><button class="btn btn-s" onclick="exportLogs()">Export Logs</button></div>
+    </div>
+    <div class="cb"><div class="tl" id="d-re"><div class="empty">No events</div></div></div>
+  </div>
+</div>
+
+<!-- SETTINGS -->
+<div class="page" id="p-settings">
+  <h2 style="font-size:18px;color:var(--tx1);margin-bottom:16px">Platform Settings</h2>
+  <div class="tabs" id="st-tabs">
+    <button class="tab on" data-t="st-providers">Providers &amp; Models</button>
+    <button class="tab" data-t="st-apikeys">API Keys</button>
+    <button class="tab" data-t="st-execution">Execution</button>
+    <button class="tab" data-t="st-connectors">Connectors</button>
+    <button class="tab" data-t="st-safety">Safety &amp; Guardrails</button>
+  </div>
+  <div class="tp on" id="st-providers"><div class="card"><div class="cb" id="s-providers"><div class="loading"><div class="spin"></div>Loading...</div></div></div></div>
+  <div class="tp" id="st-apikeys"><div class="card"><div class="cb" id="s-apikeys"><div class="loading"><div class="spin"></div>Loading...</div></div></div></div>
+  <div class="tp" id="st-execution"><div class="card"><div class="cb" id="s-execution"><div class="loading"><div class="spin"></div>Loading...</div></div></div></div>
+  <div class="tp" id="st-connectors"><div class="card"><div class="cb" id="s-connectors"><div class="loading"><div class="spin"></div>Loading...</div></div></div></div>
+  <div class="tp" id="st-safety"><div class="card"><div class="cb" id="s-safety"><div class="loading"><div class="spin"></div>Loading...</div></div></div></div>
+</div>
+
+<!-- WORKSPACE -->
+<div class="page" id="p-workspace">
+  <div class="ws-layout">
+    <div class="ws-side">
+      <div class="ws-side-hdr">
+        <input type="text" id="ws-root-inp" placeholder="Workspace path..." title="Workspace root directory">
+        <button class="btn btn-s btn-p" onclick="setWSRoot()" title="Set workspace">Set</button>
+      </div>
+      <div class="ws-tree" id="ws-tree"><div class="loading"><div class="spin"></div>Loading...</div></div>
+    </div>
+    <div class="ws-main">
+      <div class="ws-toolbar">
+        <div class="ws-crumbs" id="ws-crumbs"></div>
+        <div style="flex:1"></div>
+        <button class="btn btn-s" onclick="wsRefresh()" title="Refresh">&#x21bb; Refresh</button>
+        <button class="btn btn-s" onclick="wsNewDir()" title="New folder">+ Folder</button>
+      </div>
+      <div class="ws-info-bar" id="ws-info">
+        <span id="ws-info-path">-</span>
+        <span id="ws-info-stats"></span>
+      </div>
+      <div class="ws-content" id="ws-content">
+        <div class="empty"><div class="ei">&#x1f4c2;</div>Select a file or folder to browse</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ABOUT -->
+<div class="page" id="p-about">
+  <div class="card" style="max-width:640px">
+    <div class="ch"><h2>Autonomous Factory</h2></div>
+    <div class="cb">
+      <p style="margin-bottom:12px">AI-native autonomous software delivery platform.</p>
+      <table class="tbl">
+        <tr><td style="color:var(--tx2);width:160px">Version</td><td id="a-ver">-</td></tr>
+        <tr><td style="color:var(--tx2)">Database</td><td id="a-db">-</td></tr>
+        <tr><td style="color:var(--tx2)">Architecture</td><td>Six-layer: Operator &rarr; Control &rarr; Execution &rarr; Evidence &rarr; State &rarr; Adapter</td></tr>
+        <tr><td style="color:var(--tx2)">Agents</td><td>Planner, Researcher, Implementer, Reviewer, Validator</td></tr>
+        <tr><td style="color:var(--tx2)">Orchestrator</td><td>Separate controller &mdash; supervises, does not act (ADR-004)</td></tr>
+        <tr><td style="color:var(--tx2)">Key ADRs</td><td>003 (agents), 004 (orchestrator), 005 (compiler), 006 (evidence), 007 (persistence), 008 (serialization), 013 (isolation), 014 (schema)</td></tr>
+      </table>
+    </div>
+  </div>
+</div>
+
+    </div>
+  </div>
+</div>
+
+<!-- NEW MISSION MODAL -->
+<div class="mo" id="nm-mo">
+  <div class="md">
+    <div class="mh"><h2>New Mission</h2><button class="mx" onclick="closeMo('nm-mo')">&times;</button></div>
+    <div class="mb">
+      <div class="fg"><label>Title</label><input type="text" id="nm-t" placeholder="Mission title..."></div>
+      <div class="fg"><label>Prompt</label><textarea id="nm-p" rows="5" placeholder="Describe what you want the platform to accomplish..."></textarea></div>
+      <div class="fg"><label>Provider Hints (optional)</label><select id="nm-prov"><option value="">Use defaults</option><option value="openai">OpenAI</option><option value="anthropic">Anthropic</option><option value="google">Google</option><option value="local">Local</option></select></div>
+      <div class="fg"><label>Step Budget (optional)</label><input type="number" id="nm-budget" placeholder="e.g. 50"></div>
+      <div class="fg"><label>Attach Files</label>
+        <div class="dz" id="nm-dz" onclick="E('nm-fi').click()"><input type="file" id="nm-fi" multiple>Drop files or click to browse</div>
+        <div class="fl" id="nm-fl"></div>
+      </div>
+    </div>
+    <div class="mf"><button class="btn" onclick="closeMo('nm-mo')">Cancel</button><button class="btn btn-p" onclick="createM()">Create Mission</button></div>
+  </div>
+</div>
+
+<!-- UPLOAD MODAL -->
+<div class="mo" id="ul-mo">
+  <div class="md">
+    <div class="mh"><h2>Upload Files</h2><button class="mx" onclick="closeMo('ul-mo')">&times;</button></div>
+    <div class="mb">
+      <div class="fg"><label>Destination Folder</label><input type="text" id="ul-dst" placeholder="Optional subfolder"><div class="hn">Leave empty for workspace root</div></div>
+      <div class="dz" id="ul-dz" onclick="E('ul-fi').click()"><input type="file" id="ul-fi" multiple>Drop files or click &mdash; .zip auto-extracted</div>
+      <div class="fl" id="ul-fl"></div>
+      <div id="ul-prog" style="display:none;margin-top:12px">
+        <div style="font-size:12px;color:var(--tx2);margin-bottom:4px" id="ul-ptxt">Uploading...</div>
+        <div class="eb"><div class="ef green" id="ul-pbar" style="width:0%"></div></div>
+      </div>
+      <div id="ul-res" style="display:none;margin-top:12px"></div>
+    </div>
+    <div class="mf"><button class="btn" onclick="closeMo('ul-mo')">Cancel</button><button class="btn btn-p" onclick="doUL()" id="ul-go">Upload</button></div>
+  </div>
+</div>
+
+<div id="toasts"></div>
+
+<script>
+var A='',CM=null,Ms=[],WIs=[],AS={},nmF=[],ulF=[],wsConn=null;
+function E(id){return document.getElementById(id)}
+function Q(s){return document.querySelector(s)}
+function QA(s){return document.querySelectorAll(s)}
+function toast(m,t){t=t||'inf';var e=document.createElement('div');e.className='toast '+t;e.textContent=m;E('toasts').appendChild(e);setTimeout(function(){e.remove()},4000)}
+function ft(iso){return iso?new Date(iso).toLocaleString():'-'}
+function fz(b){return b<1024?b+' B':b<1048576?(b/1024).toFixed(1)+' KB':(b/1048576).toFixed(1)+' MB'}
+function sb(s){return'<span class="st st-'+s+'">'+s+'</span>'}
+function sc(s){return's-'+(s||'info')}
+function esc(s){if(s==null)return'';var d=document.createElement('div');d.textContent=String(s);return d.innerHTML}
+function api(p,o){o=o||{};return fetch(A+p,o).then(function(r){if(!r.ok)return r.json().catch(function(){return{detail:r.statusText}}).then(function(e){throw new Error(e.detail||r.statusText)});return r.json()})}
+
+// Nav
+var PN={missions:'Missions',approvals:'Approvals',workspace:'Workspace',diagnostics:'Diagnostics',settings:'Settings',about:'About'};
+function nav(p){QA('.page').forEach(function(x){x.classList.remove('on')});QA('.nb').forEach(function(x){x.classList.remove('on')});var el=E('p-'+p);if(el)el.classList.add('on');var b=Q('.nb[data-p="'+p+'"]');if(b)b.classList.add('on');E('ptitle').textContent=PN[p]||p;E('bc').textContent='';
+if(p==='missions')loadMs();if(p==='approvals')loadAp();if(p==='workspace')loadWS();if(p==='diagnostics')loadDg();if(p==='settings')loadSt();if(p==='about')loadAb();}
+QA('.nb').forEach(function(b){b.addEventListener('click',function(){nav(b.dataset.p)})});
+
+// Tabs
+document.addEventListener('click',function(e){if(!e.target.classList.contains('tab'))return;var g=e.target.closest('.tabs');if(!g)return;g.querySelectorAll('.tab').forEach(function(t){t.classList.remove('on');var p=E(t.dataset.t);if(p)p.classList.remove('on')});e.target.classList.add('on');var p=E(e.target.dataset.t);if(p)p.classList.add('on')});
+
+// Modals
+function openMo(id){E(id).classList.add('open')}function closeMo(id){E(id).classList.remove('open')}
+QA('.mo').forEach(function(o){o.addEventListener('click',function(e){if(e.target===o)o.classList.remove('open')})});
+
+// ─── MISSIONS ───
+function loadMs(){api('/api/missions').then(function(d){Ms=d.missions||[];renderML();badgeAp()}).catch(function(e){toast('Failed: '+e.message,'err')})}
+function renderML(){var el=E('ml');if(!Ms.length){el.innerHTML='<div class="empty"><div class="ei">&#x1f3af;</div>No missions yet. Create one to get started.</div>';return}
+el.innerHTML=Ms.map(function(m){return'<div class="mi" onclick="openMD(\''+m.id+'\')">'+sb(m.status)+'<span class="tt">'+esc(m.title)+'</span><span class="tm">'+ft(m.created_at)+'</span></div>'}).join('')}
+
+// New mission
+function openNM(){E('nm-t').value='';E('nm-p').value='';E('nm-prov').value='';E('nm-budget').value='';nmF=[];renderNMF();openMo('nm-mo');setTimeout(function(){E('nm-t').focus()},100)}
+function renderNMF(){var el=E('nm-fl');if(!nmF.length){el.innerHTML='';return}el.innerHTML=nmF.map(function(f,i){return'<div class="fi"><span class="fn">'+esc(f.name)+'</span><span class="fs">'+fz(f.size)+'</span><button class="fr" onclick="nmF.splice('+i+',1);renderNMF()">&times;</button></div>'}).join('')}
+function createM(){var t=E('nm-t').value.trim(),p=E('nm-p').value.trim();if(!t||!p){toast('Title and prompt required','err');return}
+var body={title:t,raw_prompt:p};var prov=E('nm-prov').value;if(prov)body.provider_hints={default_provider:prov};
+var budget=parseInt(E('nm-budget').value);if(budget>0)body.step_budget=budget;
+api('/api/missions?compile=true',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}).then(function(d){toast('Mission created','ok');
+var ups=[];nmF.forEach(function(f){var fd=new FormData();fd.append('file',f);fd.append('dest','');fd.append('mission_id',d.id);ups.push(fetch(A+(f.name.toLowerCase().endsWith('.zip')?'/api/uploads/zip':'/api/uploads/file'),{method:'POST',body:fd}))});
+return Promise.all(ups).then(function(){if(nmF.length)toast(nmF.length+' file(s) uploaded','ok');closeMo('nm-mo');loadMs();openMD(d.id)})}).catch(function(e){toast('Error: '+e.message,'err')})}
+
+// Mission detail
+function openMD(id){api('/api/missions/'+id).then(function(d){CM=d;renderMD();E('ml-wrap').style.display='none';E('ml-header').style.display='none';E('md').style.display='block';E('bc').textContent='> '+d.title;loadWI(id);loadEv(id);loadEvidence(id);loadArtifacts(id);loadReports(id);connectWS(id)}).catch(function(e){toast('Error: '+e.message,'err')})}
+function closeMD(){CM=null;E('md').style.display='none';E('ml-wrap').style.display='block';E('ml-header').style.display='flex';E('bc').textContent='';disconnectWS();loadMs()}
+
+function renderMD(){var m=CM;if(!m)return;
+E('md-t').textContent=m.title;E('md-s').innerHTML=sb(m.status);
+E('md-id').textContent=m.id;E('md-s2').innerHTML=sb(m.status);
+E('md-cr').textContent=ft(m.created_at);E('md-up').textContent=ft(m.updated_at);
+E('md-ws').textContent=m.workspace_id||'(default)';E('md-pr').textContent=m.raw_prompt;
+E('md-sb').textContent=m.step_budget||'(default)';E('md-to').textContent=m.timeout_seconds?m.timeout_seconds+'s':'(default)';
+E('md-vd').innerHTML=m.final_verdict?sb(m.final_verdict):'-';
+var s=m.status;
+E('b-start').style.display=(s==='compiled'||s==='queued')?'':'none';
+E('b-advance').style.display=(s==='running'||s==='blocked')?'':'none';
+E('b-compile').style.display=(s==='pending'||s==='blocked')?'':'none';
+E('b-cancel').style.display=(s!=='completed'&&s!=='failed'&&s!=='cancelled')?'':'none';
+renderCT(m.contract);renderFD(m.findings||[])}
+
+function renderCT(c){var el=E('md-ct-b');if(!c){el.innerHTML='<div class="empty">Not compiled yet</div>';return}
+el.innerHTML='<table class="tbl">'+
+'<tr><td style="color:var(--tx2);width:180px">Objective</td><td>'+esc(c.normalized_objective||'')+'</td></tr>'+
+'<tr><td style="color:var(--tx2)">Scope</td><td><pre class="mono" style="margin:0;white-space:pre-wrap">'+esc(JSON.stringify(c.normalized_scope,null,2))+'</pre></td></tr>'+
+'<tr><td style="color:var(--tx2)">Inputs</td><td><pre class="mono" style="margin:0;white-space:pre-wrap">'+esc(JSON.stringify(c.normalized_inputs,null,2))+'</pre></td></tr>'+
+'<tr><td style="color:var(--tx2)">Outputs</td><td><pre class="mono" style="margin:0;white-space:pre-wrap">'+esc(JSON.stringify(c.normalized_outputs,null,2))+'</pre></td></tr>'+
+'<tr><td style="color:var(--tx2)">Success Criteria</td><td>'+((c.success_criteria||[]).map(function(s){return'<div>'+esc(s)+'</div>'}).join('')||'-')+'</td></tr>'+
+'<tr><td style="color:var(--tx2)">Path Corrections</td><td>'+((c.path_corrections||[]).length?c.path_corrections.map(function(p){return'<div class="mono">'+esc(p)+'</div>'}).join(''):'None')+'</td></tr>'+
+'<tr><td style="color:var(--tx2)">Ambiguities</td><td>'+((c.unresolved_ambiguities||[]).length?c.unresolved_ambiguities.map(function(a){return'<div>'+esc(a)+'</div>'}).join(''):'<span style="color:var(--gn)">None</span>')+'</td></tr>'+
+'</table>'}
+
+function renderFD(findings){var el=E('md-fd-l');if(!findings.length){el.innerHTML='<div class="empty">No compiler findings</div>';return}
+el.innerHTML=findings.map(function(f){return'<div class="fd '+sc(f.severity)+'"><div class="fh"><span style="font-size:11px" class="'+sc(f.severity)+'">'+(f.severity||'info').toUpperCase()+'</span> <span>'+esc(f.category||'')+'</span></div><div class="fm">'+esc(f.message)+'</div></div>'}).join('')}
+
+// Pipeline
+var AG=[{r:'planner',i:'&#x1f4cb;',n:'Planner'},{r:'researcher',i:'&#x1f50d;',n:'Researcher'},{r:'implementer',i:'&#x1f528;',n:'Implementer'},{r:'reviewer',i:'&#x1f50e;',n:'Reviewer'},{r:'validator',i:'&#x2705;',n:'Validator'}];
+function renderPipe(){var el=E('md-pipe');el.innerHTML=AG.map(function(a,i){var wi=WIs.find(function(w){return w.role===a.r});var cls='',st='pending';if(wi){st=wi.status;if(st==='completed')cls='done';else if(st==='running')cls='run';else if(st==='failed')cls='fail';else if(st==='blocked')cls='blk'}
+return'<div class="ps '+cls+'"><div class="pi">'+a.i+'</div><div class="pn">'+a.n+'</div><div class="pst">'+sb(st)+'</div></div>'+(i<AG.length-1?'<div class="pc"></div>':'')}).join('')}
+
+function loadWI(mid){api('/api/missions/'+mid+'/work-items').then(function(d){WIs=d;renderPipe();renderWIL()}).catch(function(){WIs=[];renderPipe()})}
+function renderWIL(){E('wi-cnt').textContent=WIs.length;var el=E('md-wi-l');if(!WIs.length){el.innerHTML='<div class="cb"><div class="empty">No work items. Start the mission to create them.</div></div>';return}
+el.innerHTML='<table class="tbl"><thead><tr><th>Role</th><th>Status</th><th>Retries</th><th>Deliverables</th><th>Created</th></tr></thead><tbody>'+
+WIs.map(function(w){return'<tr><td><strong>'+esc(w.role)+'</strong></td><td>'+sb(w.status)+'</td><td>'+(w.retry_count||0)+'/'+(w.max_retries||3)+'</td><td style="font-size:12px;color:var(--tx2)">'+(w.expected_deliverables||[]).length+' items</td><td style="font-size:12px;color:var(--tx2)">'+ft(w.created_at)+'</td></tr>'}).join('')+'</tbody></table>'}
+
+// Events timeline
+function loadEv(mid){api('/api/missions/'+mid+'/events?limit=50').then(function(evs){renderTL(evs,'md-tl-l');E('ev-cnt').textContent=evs.length}).catch(function(){})}
+function renderTL(evs,id){var el=E(id);if(!evs||!evs.length){el.innerHTML='<div class="empty">No events</div>';return}
+el.innerHTML=evs.map(function(e){var pay='';if(e.payload)pay='<div class="tb">'+esc(typeof e.payload==='string'?e.payload:JSON.stringify(e.payload,null,2))+'</div>';
+return'<div class="ti '+sc(e.severity)+'"><div class="th"><span class="tc">'+esc(e.component||'system')+'</span><span class="tt2">'+esc(e.event_type)+'</span><span style="font-size:10px;font-weight:600" class="'+sc(e.severity)+'">'+(e.severity||'info').toUpperCase()+'</span><span class="ttm">'+ft(e.created_at)+'</span></div>'+pay+'</div>'}).join('')}
+
+// Evidence
+function loadEvidence(mid){api('/api/missions/'+mid+'/evidence').then(function(evs){renderEvidence(evs)}).catch(function(){E('md-ev-l').innerHTML='<div class="empty">No evidence contracts</div>'})}
+function renderEvidence(evs){var el=E('md-ev-l');if(!evs||!evs.length){el.innerHTML='<div class="empty">No evidence contracts yet. Start the mission to create them.</div>';return}
+el.innerHTML=evs.map(function(e){var wi=WIs.find(function(w){return w.id===e.work_item_id});var role=wi?wi.role:'unknown';
+var reqN=e.required_evidence.length,prefN=e.preferred_evidence.length,optN=e.optional_evidence.length,collN=e.collected_evidence.length;
+var total=reqN+prefN+optN;var pct=total>0?Math.round(collN/total*100):0;
+return'<div class="ev-card"><h4>'+esc(role).toUpperCase()+' Evidence '+(e.sufficiency_met?'<span class="ev-met">SUFFICIENT</span>':'<span class="ev-not">INSUFFICIENT</span>')+'</h4>'+
+'<div style="display:flex;gap:16px;margin-bottom:8px"><div style="font-size:12px"><span style="color:var(--tx2)">Required:</span> <strong>'+reqN+'</strong></div><div style="font-size:12px"><span style="color:var(--tx2)">Preferred:</span> <strong>'+prefN+'</strong></div><div style="font-size:12px"><span style="color:var(--tx2)">Optional:</span> <strong>'+optN+'</strong></div><div style="font-size:12px"><span style="color:var(--tx2)">Collected:</span> <strong>'+collN+'</strong></div></div>'+
+'<div class="eb"><div class="ef '+(e.sufficiency_met?'green':pct>50?'yellow':'red')+'" style="width:'+pct+'%"></div></div>'+
+(e.evaluation_notes?'<div style="font-size:11px;color:var(--tx2);margin-top:6px">'+esc(e.evaluation_notes)+'</div>':'')+
+'</div>'}).join('')}
+
+// Artifacts
+function loadArtifacts(mid){api('/api/missions/'+mid+'/artifacts').then(function(arts){E('ar-cnt').textContent=arts.length;renderArtifacts(arts)}).catch(function(){E('md-ar-l').innerHTML='<div class="empty">No artifacts</div>'})}
+function renderArtifacts(arts){var el=E('md-ar-l');if(!arts.length){el.innerHTML='<div class="empty">No files uploaded yet</div>';return}
+el.innerHTML='<table class="tbl"><thead><tr><th>Name</th><th>Type</th><th>Path</th><th>Uploaded</th></tr></thead><tbody>'+
+arts.map(function(a){return'<tr><td><strong>'+esc(a.name)+'</strong></td><td><span class="st st-compiled">'+esc(a.artifact_type)+'</span></td><td class="mono">'+esc(a.path||'-')+'</td><td style="font-size:12px;color:var(--tx2)">'+ft(a.created_at)+'</td></tr>'}).join('')+'</tbody></table>'}
+
+// Reports
+function loadReports(mid){api('/api/missions/'+mid+'/reports').then(function(rps){E('rp-cnt').textContent=rps.length;renderReports(rps)}).catch(function(){E('md-rp-l').innerHTML='<div class="empty">No reports</div>'})}
+function renderReports(rps){var el=E('md-rp-l');if(!rps.length){el.innerHTML='<div class="empty">No reports generated yet</div>';return}
+el.innerHTML=rps.map(function(r){return'<div class="card" style="margin-bottom:10px"><div class="ch"><h2>'+esc(r.title)+'</h2><span class="cnt">'+esc(r.report_type)+'</span></div><div class="cb"><pre style="white-space:pre-wrap;font-size:12px;color:var(--tx);font-family:var(--fm)">'+esc(r.content)+'</pre></div></div>'}).join('')}
+
+// Mission actions
+function mAct(act){if(!CM)return;var id=CM.id,p;
+if(act==='start')p=api('/api/missions/'+id+'/start',{method:'POST'});
+else if(act==='advance')p=api('/api/missions/'+id+'/advance',{method:'POST'});
+else if(act==='cancel')p=api('/api/missions/'+id+'/cancel',{method:'POST'});
+else if(act==='compile')p=api('/api/missions/'+id+'/compile',{method:'POST'});
+else return;
+p.then(function(){toast('Mission '+act+(act==='cancel'?'led':'ed'),'ok');openMD(id)}).catch(function(e){toast('Error: '+e.message,'err')})}
+
+// WebSocket
+function connectWS(mid){disconnectWS();try{var proto=location.protocol==='https:'?'wss:':'ws:';wsConn=new WebSocket(proto+'//'+location.host+'/ws/missions/'+mid);wsConn.onmessage=function(e){try{var d=JSON.parse(e.data);toast('['+d.component+'] '+d.event_type,'inf');loadEv(mid);loadWI(mid)}catch(x){}};wsConn.onclose=function(){wsConn=null}}catch(x){}}
+function disconnectWS(){if(wsConn){try{wsConn.close()}catch(x){}wsConn=null}}
+
+// ─── APPROVALS ───
+function loadAp(){api('/api/approvals').then(function(ap){renderAp(ap);badgeAp(ap.length)}).catch(function(){toast('Failed to load approvals','err')})}
+function badgeAp(n){if(n===undefined){api('/api/approvals').then(function(a){badgeAp(a.length)}).catch(function(){});return}var b=E('abadge');if(n>0){b.style.display='';b.textContent=n}else{b.style.display='none'}}
+function renderAp(ap){var el=E('ap-l');if(!ap.length){el.innerHTML='<div class="empty"><div class="ei">&#x2714;</div>No pending approvals. All clear.</div>';return}
+el.innerHTML=ap.map(function(a){var ctx='';if(a.context)ctx='<div style="font-size:12px;color:var(--tx2);margin-bottom:10px;background:var(--bg);padding:8px;border-radius:var(--r)">'+esc(typeof a.context==='string'?a.context:JSON.stringify(a.context))+'</div>';
+return'<div class="ac"><div class="ar">'+esc(a.reason)+'</div><div class="am"><span>Mission: <span class="mono">'+(a.mission_id?a.mission_id.substring(0,8):'')+'...</span></span>'+(a.work_item_id?'<span>Work Item: <span class="mono">'+a.work_item_id.substring(0,8)+'...</span></span>':'')+'<span>'+ft(a.created_at)+'</span></div>'+ctx+'<div class="aa"><button class="btn btn-g btn-s" onclick="decAp(\''+a.id+'\',\'approved\')">Approve</button><button class="btn btn-d btn-s" onclick="decAp(\''+a.id+'\',\'rejected\')">Reject</button></div></div>'}).join('')}
+function decAp(id,st){api('/api/approvals/'+id+'/decide',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:st,decided_by:'operator'})}).then(function(){toast('Approval '+st,st==='approved'?'ok':'inf');loadAp()}).catch(function(e){toast('Error: '+e.message,'err')})}
+
+// ─── DIAGNOSTICS ───
+function loadDg(){api('/api/diagnostics').then(function(d){E('d-tm').textContent=d.missions.total;E('d-rn').textContent=d.missions.by_status.running||0;E('d-ap').textContent=d.pending_approvals;E('d-ev').textContent=d.total_events;
+renderBD(d.missions.by_status,'d-mb');renderBD(d.work_items.by_status,'d-wb');renderTL(d.recent_events,'d-re')}).catch(function(){toast('Failed to load diagnostics','err')})}
+function renderBD(bs,id){var el=E(id);var entries=Object.entries(bs||{});if(!entries.length){el.innerHTML='<div class="empty">No data</div>';return}
+var total=entries.reduce(function(s,e){return s+e[1]},0);el.innerHTML=entries.map(function(e){var pct=total?Math.round(e[1]/total*100):0;var c=e[0]==='completed'?'green':e[0]==='failed'?'red':'yellow';return'<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">'+sb(e[0])+'<div style="flex:1"><div class="eb"><div class="ef '+c+'" style="width:'+pct+'%"></div></div></div><span style="font-size:13px;font-weight:600;color:var(--tx1);min-width:40px;text-align:right">'+e[1]+'</span></div>'}).join('')}
+function exportLogs(){window.open(A+'/api/logs/events','_blank')}
+
+// ─── SETTINGS ───
+var SCM={providers:'s-providers',api_keys:'s-apikeys',execution:'s-execution',connectors:'s-connectors',safety:'s-safety'};
+function loadSt(){api('/api/settings').then(function(d){AS=d.categories||{};Object.keys(SCM).forEach(function(c){renderSC(c,AS[c]||[],SCM[c])})}).catch(function(e){toast('Settings: '+e.message,'err')})}
+function renderSC(cat,settings,cid){var el=E(cid);if(!settings.length){el.innerHTML='<div class="empty">No settings</div>';return}
+el.innerHTML=settings.map(function(s){var sk=s.key.split('.').slice(1).join('.');var it=s.is_secret?'password':'text';
+return'<div class="sr" data-id="'+s.id+'"><div class="si"><div class="sk">'+esc(sk)+'</div><div class="sd">'+esc(s.description)+'</div></div><input type="'+it+'" value="'+esc(s.value)+'" class="sv'+(s.is_secret?' mono':'')+'" data-id="'+s.id+'" data-sec="'+s.is_secret+'" onfocus="if(this.type===\'password\')this.type=\'text\'" onblur="if(this.dataset.sec===\'true\')this.type=\'password\'"><div class="sa"><button class="btn btn-s" onclick="savS(\''+s.id+'\',this)">Save</button></div></div>'}).join('')}
+function savS(id,btn){var row=btn.closest('.sr'),inp=row.querySelector('.sv');api('/api/settings/'+id,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({value:inp.value})}).then(function(){toast('Saved','ok');btn.textContent='Saved!';setTimeout(function(){btn.textContent='Save'},1500)}).catch(function(e){toast('Error: '+e.message,'err')})}
+
+// ─── UPLOADS ───
+function openUL(){ulF=[];renderULF();E('ul-dst').value='';E('ul-prog').style.display='none';E('ul-res').style.display='none';E('ul-go').disabled=false;openMo('ul-mo')}
+function renderULF(){var el=E('ul-fl');if(!ulF.length){el.innerHTML='';return}el.innerHTML=ulF.map(function(f,i){return'<div class="fi"><span class="fn">'+esc(f.name)+'</span><span class="fs">'+fz(f.size)+'</span><button class="fr" onclick="ulF.splice('+i+',1);renderULF()">&times;</button></div>'}).join('')}
+function doUL(){if(!ulF.length){toast('No files','err');return}var dst=E('ul-dst').value.trim(),mid=CM?CM.id:'';E('ul-prog').style.display='block';E('ul-go').disabled=true;var ok=0,fail=0,tot=ulF.length,chain=Promise.resolve();
+ulF.forEach(function(f,i){chain=chain.then(function(){E('ul-ptxt').textContent='Uploading '+f.name+'... ('+(i+1)+'/'+tot+')';E('ul-pbar').style.width=Math.round(i/tot*100)+'%';
+var fd=new FormData();fd.append('file',f);fd.append('dest',dst);if(mid)fd.append('mission_id',mid);return fetch(A+(f.name.toLowerCase().endsWith('.zip')?'/api/uploads/zip':'/api/uploads/file'),{method:'POST',body:fd}).then(function(r){if(r.ok)ok++;else fail++}).catch(function(){fail++})})});
+chain.then(function(){E('ul-pbar').style.width='100%';E('ul-ptxt').textContent='Done';E('ul-res').style.display='block';E('ul-res').innerHTML='<div style="color:var(--gn)">'+ok+' uploaded'+(fail?', '+fail+' failed':'')+'</div>';toast(ok+' file(s) uploaded','ok');E('ul-go').disabled=false;if(CM)loadArtifacts(CM.id)})}
+
+// Drag & drop
+function setupDZ(dzId,fiId,ref){var dz=E(dzId),fi=E(fiId);if(!dz||!fi)return;
+dz.addEventListener('dragover',function(e){e.preventDefault();dz.classList.add('over')});
+dz.addEventListener('dragleave',function(){dz.classList.remove('over')});
+dz.addEventListener('drop',function(e){e.preventDefault();dz.classList.remove('over');addF(ref,Array.from(e.dataTransfer.files))});
+fi.addEventListener('change',function(){addF(ref,Array.from(fi.files));fi.value=''})}
+function addF(ref,files){if(ref==='nm'){nmF=nmF.concat(files);renderNMF()}else if(ref==='ul'){ulF=ulF.concat(files);renderULF()}else if(ref==='dd'){ddUL(files)}}
+function ddUL(files){if(!CM)return;files.forEach(function(f){var fd=new FormData();fd.append('file',f);fd.append('dest','');fd.append('mission_id',CM.id);fetch(A+(f.name.toLowerCase().endsWith('.zip')?'/api/uploads/zip':'/api/uploads/file'),{method:'POST',body:fd}).then(function(r){if(r.ok){toast('Uploaded '+f.name,'ok');loadArtifacts(CM.id)}else toast('Failed: '+f.name,'err')}).catch(function(){toast('Failed: '+f.name,'err')})})}
+
+// ─── WORKSPACE ───
+var wsRoot='',wsCurPath='',wsTreeData=[];
+function loadWS(){
+api('/api/workspace/info').then(function(d){
+wsRoot=d.path;E('ws-root-inp').value=wsRoot;
+E('ws-info-path').textContent=wsRoot;
+E('ws-info-stats').textContent=d.exists?(d.total_files+' files, '+d.total_dirs+' dirs, '+fz(d.total_size)):'Directory not found';
+return api('/api/workspace/tree?max_depth=4')
+}).then(function(d){wsTreeData=d.tree||[];renderWSTree();wsBrowse('')}).catch(function(e){toast('Workspace: '+e.message,'err')})}
+
+function renderWSTree(){
+var el=E('ws-tree');
+if(!wsTreeData.length){el.innerHTML='<div class="empty" style="padding:20px">Empty workspace</div>';return}
+el.innerHTML=buildTreeHTML(wsTreeData,0)}
+
+function buildTreeHTML(nodes,depth){
+return nodes.map(function(n){
+if(n.is_dir){
+var ch=n.children&&n.children.length?'<div class="ws-children" id="wst-'+css(n.path)+'">'+buildTreeHTML(n.children,depth+1)+'</div>':'';
+return'<div class="ws-node"><div class="ws-node-row" onclick="wsToggle(this,\''+esc(n.path)+'\')" style="padding-left:'+(8+depth*12)+'px"><span class="ws-node-icon">'+(n.children&&n.children.length?'&#x25bc;':'&#x25b6;')+'</span><span class="ws-node-icon">&#x1f4c1;</span><span class="ws-node-name">'+esc(n.name)+'</span></div>'+ch+'</div>'
+}else{
+return'<div class="ws-node"><div class="ws-node-row" onclick="wsOpen(\''+esc(n.path)+'\')" style="padding-left:'+(8+depth*12)+'px"><span class="ws-node-icon">&#xfeff;</span><span class="ws-node-icon">'+(n.is_text?'&#x1f4c4;':'&#x1f4ce;')+'</span><span class="ws-node-name">'+esc(n.name)+'</span><span class="ws-node-sz">'+fz(n.size||0)+'</span></div></div>'
+}}).join('')}
+function css(p){return p.replace(/[^a-zA-Z0-9]/g,'_')}
+
+function wsToggle(row,path){
+var ch=row.nextElementSibling;
+if(ch&&ch.classList.contains('ws-children')){ch.style.display=ch.style.display==='none'?'':'none';
+var ico=row.querySelector('.ws-node-icon');if(ico)ico.innerHTML=ch.style.display==='none'?'&#x25b6;':'&#x25bc;'}
+wsBrowse(path)}
+
+function wsBrowse(path){
+wsCurPath=path;
+api('/api/workspace/browse?path='+encodeURIComponent(path)).then(function(d){
+renderCrumbs(path);
+var el=E('ws-content');
+if(!d.entries||!d.entries.length){el.innerHTML='<div class="empty"><div class="ei">&#x1f4c2;</div>Empty directory</div>';return}
+el.innerHTML='<div class="ws-grid">'+
+(d.parent!==null&&d.parent!==undefined?'<div class="ws-grid-item" onclick="wsBrowse(\''+esc(d.parent||'')+'\')" title="Go up"><span class="ws-grid-icon">&#x2b06;</span><span class="ws-grid-name">..</span><span class="ws-grid-meta"></span></div>':'')+
+d.entries.map(function(e){
+if(e.is_dir){return'<div class="ws-grid-item" onclick="wsBrowse(\''+esc(e.path)+'\')" title="'+esc(e.path)+'"><span class="ws-grid-icon">&#x1f4c1;</span><span class="ws-grid-name">'+esc(e.name)+'</span><span class="ws-grid-meta">'+ft(e.modified)+'</span></div>'}
+return'<div class="ws-grid-item" onclick="wsOpen(\''+esc(e.path)+'\')" title="'+esc(e.path)+'"><span class="ws-grid-icon">'+(e.is_text?'&#x1f4c4;':'&#x1f4ce;')+'</span><span class="ws-grid-name">'+esc(e.name)+'</span><span class="ws-grid-meta">'+(e.size!=null?fz(e.size):'')+'</span></div>'
+}).join('')+'</div>'}).catch(function(e){E('ws-content').innerHTML='<div class="empty">Error: '+esc(e.message)+'</div>'})}
+
+function wsOpen(path){
+api('/api/workspace/file?path='+encodeURIComponent(path)).then(function(d){
+renderCrumbs(path);
+var lines=d.content.split('\n');
+E('ws-content').innerHTML='<div class="ws-info-bar" style="justify-content:space-between"><span class="mono">'+esc(d.name)+'</span><span>'+d.lines+' lines &middot; '+fz(d.size)+(d.mime_type?' &middot; '+esc(d.mime_type):'')+'</span></div>'+
+'<div class="ws-line-nums">'+lines.map(function(l){return'<div class="ws-line"><span class="ws-line-text">'+esc(l)+'</span></div>'}).join('')+'</div>';
+// Highlight selection in tree
+QA('.ws-node-row.sel').forEach(function(r){r.classList.remove('sel')});
+}).catch(function(e){E('ws-content').innerHTML='<div class="empty">Cannot open file: '+esc(e.message)+'</div>'})}
+
+function renderCrumbs(path){
+var el=E('ws-crumbs');
+var parts=path?path.split('/'):[];
+var crumbs=['<span onclick="wsBrowse(\'\')">workspace</span>'];
+var acc='';
+parts.forEach(function(p,i){
+acc=acc?(acc+'/'+p):p;
+crumbs.push('<span class="sep">/</span>');
+if(i===parts.length-1){crumbs.push('<span style="color:var(--tx1);cursor:default">'+esc(p)+'</span>')}
+else{crumbs.push('<span onclick="wsBrowse(\''+esc(acc)+'\')">'+esc(p)+'</span>')}});
+el.innerHTML=crumbs.join('')}
+
+function setWSRoot(){
+var path=E('ws-root-inp').value.trim();
+if(!path){toast('Enter a path','err');return}
+api('/api/workspace/validate-path?path='+encodeURIComponent(path)).then(function(d){
+if(!d.valid&&!d.can_create){toast('Invalid path: must be an existing writable directory','err');return}
+return api('/api/workspace/set-root?path='+encodeURIComponent(path),{method:'PUT'})
+}).then(function(d){if(d){toast('Workspace set to '+d.workspace_root,'ok');loadWS()}}).catch(function(e){toast('Error: '+e.message,'err')})}
+
+function wsRefresh(){loadWS()}
+function wsNewDir(){
+var name=prompt('New folder name:');
+if(!name)return;
+var path=wsCurPath?(wsCurPath+'/'+name):name;
+api('/api/workspace/create-dir?path='+encodeURIComponent(path),{method:'POST'}).then(function(){toast('Folder created','ok');loadWS()}).catch(function(e){toast('Error: '+e.message,'err')})}
+
+// ─── ABOUT ───
+function loadAb(){fetch('/health').then(function(r){return r.json()}).then(function(d){E('a-ver').textContent=d.version||'-';E('a-db').textContent=d.database||'-'}).catch(function(){})}
+
+// ─── POLLING ───
+function startPoll(){
+setInterval(function(){if(CM){api('/api/missions/'+CM.id).then(function(d){var changed=CM.status!==d.status;CM=d;renderMD();if(changed){loadWI(CM.id);loadEv(CM.id);loadEvidence(CM.id)}}).catch(function(){})}},5000);
+setInterval(function(){badgeAp()},10000);
+// Connection check
+setInterval(function(){fetch('/health').then(function(r){return r.json()}).then(function(d){E('cdot').style.background=d.status==='ok'?'var(--gn)':'var(--yl)';E('ctext').textContent=d.status==='ok'?'Connected':'Degraded'}).catch(function(){E('cdot').style.background='var(--rd)';E('ctext').textContent='Disconnected'})},15000)}
+
+// ─── KEYBOARD SHORTCUTS ───
+document.addEventListener('keydown',function(e){
+if(e.key==='Escape'){QA('.mo.open').forEach(function(m){m.classList.remove('open')})}
+if(e.ctrlKey||e.metaKey){if(e.key==='n'||e.key==='N'){e.preventDefault();openNM()}
+if(e.key==='1'){e.preventDefault();nav('missions')}if(e.key==='2'){e.preventDefault();nav('approvals')}if(e.key==='3'){e.preventDefault();nav('workspace')}if(e.key==='4'){e.preventDefault();nav('diagnostics')}if(e.key==='5'){e.preventDefault();nav('settings')}}})
+
+// ─── INIT ───
+document.addEventListener('DOMContentLoaded',function(){setupDZ('nm-dz','nm-fi','nm');setupDZ('ul-dz','ul-fi','ul');setupDZ('dd-dz','dd-fi','dd');loadMs();badgeAp();startPoll()});
+</script>
+</body>
+</html>

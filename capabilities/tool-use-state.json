@@ -1,0 +1,11 @@
+{
+  "version": "v23",
+  "generated_at": null,
+  "tool_biases": {
+    "prefer_lightweight_builtin_tools_first": 0.65,
+    "mcp_activation_value_bias": 0.55,
+    "plugin_combination_readiness": 0.5,
+    "validation_tool_priority": 0.6,
+    "heavy_tool_caution_bias": 0.55
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "version": "v33",
+  "generated_at": null,
+  "collaboration_biases": {
+    "solo_first_bias": 0.7,
+    "specialist_activation_bias": 0.6,
+    "pair_collaboration_bias": 0.55,
+    "team_fanout_restraint_bias": 0.7,
+    "phased_collaboration_bias": 0.65
+  }
+}

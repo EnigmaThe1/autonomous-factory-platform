@@ -1,0 +1,18 @@
+{
+  "version": "v21",
+  "principle": "Improve mission compilation quality over time using downstream execution evidence, while preserving autonomy-first behavior.",
+  "learning_targets": [
+    "ambiguity detection quality",
+    "constraint extraction quality",
+    "decomposition quality",
+    "assumption surfacing quality",
+    "research-before-implementation trigger quality",
+    "contract rigidity balance"
+  ],
+  "guardrails": [
+    "compiled contracts should remain adaptive, not rigid",
+    "compiler improvements should reduce friction, not add bureaucracy",
+    "preserve room for intelligent replanning during execution"
+  ],
+  "rule": "Use downstream evidence to improve execution-contract formation and task decomposition."
+}

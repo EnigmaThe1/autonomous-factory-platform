@@ -1,0 +1,18 @@
+{
+  "id": "trust-governance-pack",
+  "summary": "Policies and helpers for source trust, approval boundaries, install modes, and activation decisions.",
+  "contains": [
+    "capability-selector",
+    "capability-selection skill",
+    "capability-activation-plan skill",
+    "trust-policy.json",
+    "plan-capabilities.py",
+    "evaluate-trust.py",
+    "render-trust-report.py"
+  ],
+  "when_to_use": [
+    "before enabling new plugins or MCP servers",
+    "when a mission implies package installs or external connectors",
+    "when deciding what can auto-enable versus what must ask"
+  ]
+}

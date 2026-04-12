@@ -1,0 +1,21 @@
+{
+  "version": "v22",
+  "patterns": {
+    "research_planning": {
+      "preferred_bias": "stay_single_agent_longer",
+      "notes": "Research-heavy missions often benefit from avoiding premature specialist fan-out."
+    },
+    "web_app_build": {
+      "preferred_bias": "phased_specialist_escalation",
+      "notes": "Product builds often benefit from staged routing into coding, browser, and data specialists as phases mature."
+    },
+    "refactor_repair": {
+      "preferred_bias": "repo_truth_then_targeted_specialist_use",
+      "notes": "Repair missions benefit from discovery-first flow and narrower specialist escalation."
+    },
+    "deployment_runtime": {
+      "preferred_bias": "earlier_ops_escalation",
+      "notes": "Runtime and deployment missions often benefit from earlier ops/deploy specialist involvement."
+    }
+  }
+}

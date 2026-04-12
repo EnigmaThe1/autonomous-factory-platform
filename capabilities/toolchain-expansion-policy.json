@@ -1,0 +1,15 @@
+{
+  "policy_mode": "advisory_first",
+  "goal": "Expand only as much as the mission requires.",
+  "classification": {
+    "required": "Needed to execute the current mission successfully.",
+    "useful": "Improves quality or speed for the current mission.",
+    "optional": "Could help later but is not justified yet."
+  },
+  "expansion_preferences": [
+    "Prefer smallest useful expansion set first",
+    "Avoid preloading everything",
+    "Allow dynamic revision when new evidence appears",
+    "Keep host-protection rules narrow and firm"
+  ]
+}

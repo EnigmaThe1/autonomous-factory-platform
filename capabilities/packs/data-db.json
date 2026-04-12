@@ -1,0 +1,10 @@
+{
+  "id": "data-db-pack",
+  "description": "Optional data and database pack for truth verification.",
+  "includes": [
+    "database MCP",
+    "query templates",
+    "read-only verification workflow"
+  ],
+  "default_activation": "on_demand"
+}

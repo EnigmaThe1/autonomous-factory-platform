@@ -1,0 +1,18 @@
+{
+  "version": "v33",
+  "principle": "Improve execution quality by learning which collaboration patterns work best for different mission types while preserving autonomy-first behavior.",
+  "learning_targets": [
+    "solo_vs_collaborative_fit",
+    "specialist_involvement_timing",
+    "pairing_value_fit",
+    "team_fanout_cost_control",
+    "phased_vs_simultaneous_collaboration_fit",
+    "mission_pattern_collaboration_fit"
+  ],
+  "guardrails": [
+    "do not force team structures where solo work is enough",
+    "preserve freedom to adapt collaboration shape mid-mission",
+    "prefer soft collaboration biases over rigid staffing rules"
+  ],
+  "rule": "Use mission outcomes to improve collaboration-pattern selection without collapsing execution into one fixed team style."
+}

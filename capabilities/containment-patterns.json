@@ -1,0 +1,21 @@
+{
+  "version": "v38",
+  "patterns": {
+    "partial_failure": {
+      "preferred_response": "scoped_rollback_then_resume",
+      "notes": "When only one part fails, revert that part and preserve the rest."
+    },
+    "risky_change": {
+      "preferred_response": "bounded_experiment_before_promotion",
+      "notes": "Potentially disruptive changes should stay isolated until validated."
+    },
+    "bad_branch": {
+      "preferred_response": "branch_isolate_then_decide",
+      "notes": "A degraded branch should be contained before deciding whether to repair or discard it."
+    },
+    "wide_regression": {
+      "preferred_response": "blast_radius_map_then_targeted_revert",
+      "notes": "Wider regressions need scope mapping before recovery."
+    }
+  }
+}

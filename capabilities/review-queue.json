@@ -1,0 +1,19 @@
+{
+  "schema_version": "1.0",
+  "items": [
+    {
+      "queue_id": "rq-001",
+      "capability_id": "browser_ui_pack",
+      "reason": "stale metadata refresh required",
+      "priority": "medium",
+      "status": "pending_review"
+    },
+    {
+      "queue_id": "rq-002",
+      "capability_id": "community_ci_pack",
+      "reason": "newly discovered unreviewed community capability",
+      "priority": "high",
+      "status": "pending_review"
+    }
+  ]
+}

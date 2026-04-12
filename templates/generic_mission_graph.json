@@ -1,0 +1,51 @@
+{
+  "mission_id": "mission-example",
+  "summary": "Example mission summary",
+  "execution_mode": "single_agent",
+  "phases": [
+    {
+      "id": "discover",
+      "name": "Discover project truth",
+      "type": "discover",
+      "depends_on": [],
+      "required_capabilities": [],
+      "status": "planned",
+      "exit_criteria": ["Relevant project truth has been identified"]
+    },
+    {
+      "id": "plan",
+      "name": "Compile mission and plan",
+      "type": "plan",
+      "depends_on": ["discover"],
+      "required_capabilities": [],
+      "status": "planned",
+      "exit_criteria": ["Execution contract and minimal plan are complete"]
+    },
+    {
+      "id": "implement",
+      "name": "Execute bounded implementation",
+      "type": "implement",
+      "depends_on": ["plan"],
+      "required_capabilities": [],
+      "status": "planned",
+      "exit_criteria": ["Implementation is complete"]
+    },
+    {
+      "id": "validate",
+      "name": "Validate and review",
+      "type": "validate",
+      "depends_on": ["implement"],
+      "required_capabilities": [],
+      "status": "planned",
+      "exit_criteria": ["Validation and review have completed"]
+    }
+  ],
+  "checkpoints": [
+    {
+      "id": "review-before-close",
+      "after_phase": "validate",
+      "required": true,
+      "kind": "review"
+    }
+  ]
+}

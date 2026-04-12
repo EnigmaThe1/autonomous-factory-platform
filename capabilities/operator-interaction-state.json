@@ -1,0 +1,11 @@
+{
+  "version": "v34",
+  "generated_at": null,
+  "interaction_biases": {
+    "salvage_bias": 0.75,
+    "intent_interpretation_bias": 0.7,
+    "adaptive_redirect_bias": 0.75,
+    "clarification_restraint_bias": 0.8,
+    "restart_restraint_bias": 0.8
+  }
+}

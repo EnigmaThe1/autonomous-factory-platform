@@ -1,0 +1,12 @@
+{
+  "version": "v25",
+  "generated_at": null,
+  "shared_biases": {
+    "autonomy_preservation_bias": 0.9,
+    "lightweight_first_bias": 0.65,
+    "specialist_escalation_sensitivity": 0.6,
+    "soft_guidance_strength": 0.55,
+    "evidence_weight_strength": 0.6
+  },
+  "cross_layer_notes": []
+}

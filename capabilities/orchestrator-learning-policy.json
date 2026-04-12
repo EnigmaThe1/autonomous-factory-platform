@@ -1,0 +1,18 @@
+{
+  "version": "v22",
+  "principle": "Improve orchestration flow, routing, and escalation timing over time using mission outcomes, while preserving autonomy-first behavior.",
+  "learning_targets": [
+    "single_agent_vs_specialist_timing",
+    "specialist_selection_quality",
+    "parallelization_timing",
+    "escalation_threshold_quality",
+    "sequencing_quality",
+    "validation_flow_quality"
+  ],
+  "guardrails": [
+    "orchestration improvements should remain soft and reversible",
+    "do not convert routing guidance into rigid mandatory workflow by default",
+    "preserve freedom for intelligent replanning and opportunistic routing"
+  ],
+  "rule": "Use downstream evidence to improve coordination and routing quality without reducing agent freedom."
+}

@@ -1,0 +1,25 @@
+{
+  "version": "v25",
+  "principle": "Synthesize learning across major adaptive layers into a coherent, autonomy-first control surface.",
+  "layers": [
+    "mission_compiler",
+    "orchestrator",
+    "tool_use",
+    "capability_learning",
+    "policy_balance"
+  ],
+  "synthesis_targets": [
+    "cross_layer_consistency",
+    "bias_unification",
+    "conflict_reduction",
+    "autonomy_preservation",
+    "host_boundary_integrity",
+    "shared_soft_defaults"
+  ],
+  "guardrails": [
+    "synthesis should remain soft and revisable",
+    "do not turn layer synthesis into rigid mandatory workflow",
+    "preserve project-space freedom and narrow host protection"
+  ],
+  "rule": "Use cross-layer synthesis to improve coherence, not to centralize control in a brittle way."
+}

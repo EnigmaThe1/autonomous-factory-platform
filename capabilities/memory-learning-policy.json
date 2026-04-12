@@ -1,0 +1,19 @@
+{
+  "version": "v27",
+  "principle": "Improve memory usefulness over time by retaining what is reusable, summarizing what is bulky, surfacing what is timely, and forgetting what is stale.",
+  "learning_targets": [
+    "retention_quality",
+    "summary_quality",
+    "surfacing_timing",
+    "forgetting_quality",
+    "memory_clutter_reduction",
+    "cross_mission_reuse_value"
+  ],
+  "guardrails": [
+    "prefer selective retention over memory hoarding",
+    "prefer compressed reusable artifacts over bulky raw history",
+    "forget stale or low-value detail rather than accumulating noise",
+    "surface memory when it helps action, not just because it exists"
+  ],
+  "rule": "Use mission outcomes to improve memory selectivity and compression without turning memory into clutter."
+}

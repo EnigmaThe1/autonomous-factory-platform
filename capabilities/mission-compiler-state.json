@@ -1,0 +1,11 @@
+{
+  "version": "v21",
+  "generated_at": null,
+  "compiler_biases": {
+    "ambiguity_sensitivity": 0.6,
+    "constraint_extraction_strength": 0.6,
+    "decomposition_depth": 0.6,
+    "research_trigger_sensitivity": 0.5,
+    "rigidity_avoidance_bias": 0.7
+  }
+}

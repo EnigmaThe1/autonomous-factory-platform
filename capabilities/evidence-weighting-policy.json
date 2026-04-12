@@ -1,0 +1,27 @@
+{
+  "version": "v17",
+  "principle": "Capability promotion should reflect both phase proximity and evidence convergence.",
+  "evidence_strength_bands": {
+    "weak": {
+      "meaning": "Signals are sparse, speculative, or weakly supported.",
+      "default_effect": "Prefer suggested or defer_until_trigger."
+    },
+    "moderate": {
+      "meaning": "Useful evidence exists but is not yet strongly convergent.",
+      "default_effect": "Consider suggested or staged_for_activation based on phase proximity."
+    },
+    "strong": {
+      "meaning": "Multiple evidence channels converge on near-term usefulness.",
+      "default_effect": "Prefer staged_for_activation."
+    }
+  },
+  "channels": [
+    "mission_contract",
+    "environment_fit",
+    "execution_friction",
+    "fallback_weakness",
+    "validation_leverage",
+    "trust_source_confidence"
+  ],
+  "decision_rule": "Use evidence strength to reinforce or temper phase-aware promotion."
+}

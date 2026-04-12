@@ -1,0 +1,18 @@
+{
+  "version": "v23",
+  "principle": "Improve concrete tool and MCP/plugin choice over time using outcome evidence, while preserving autonomy-first behavior.",
+  "learning_targets": [
+    "tool_selection_quality",
+    "tool_combination_quality",
+    "mcp_surface_usefulness",
+    "plugin_usefulness",
+    "heavy_vs_light_tool_tradeoffs",
+    "validation_tool_fit"
+  ],
+  "guardrails": [
+    "tool-use improvements should remain soft and reversible",
+    "do not force one tool path as the only valid path by default",
+    "preserve freedom to improvise with available tools when context changes"
+  ],
+  "rule": "Use mission outcomes to bias tool choice more intelligently without creating rigid tool mandates."
+}

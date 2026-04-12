@@ -1,0 +1,11 @@
+{
+  "default_mode": "single_agent",
+  "selection_questions": [
+    "Will extra agents materially improve outcome quality?",
+    "Is there meaningful parallel work?",
+    "Would an independent review or research branch help?",
+    "Is the coordination cost justified?"
+  ],
+  "policy_mode": "advisory",
+  "non_negotiable_boundary": "Escalation should never cross host-safety boundaries."
+}

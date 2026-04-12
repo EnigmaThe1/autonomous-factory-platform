@@ -1,0 +1,22 @@
+{
+  "version": "v20",
+  "generated_at": null,
+  "weights": {
+    "mission_contract": 3,
+    "environment_fit": 2,
+    "execution_friction": 3,
+    "fallback_weakness": 2,
+    "validation_leverage": 2,
+    "trust_source_confidence": 1
+  },
+  "phase_sensitivity": {
+    "current_phase_match": 1.0,
+    "next_phase_match": 0.8,
+    "anticipatory_staging_bias": 0.5
+  },
+  "bias_strength": {
+    "earlier_suggestion": 0.4,
+    "stronger_staging_bias": 0.6,
+    "more_conservative_bias": 0.5
+  }
+}

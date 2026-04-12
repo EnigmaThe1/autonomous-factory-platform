@@ -1,0 +1,30 @@
+{
+  "version": "v26",
+  "patterns": {
+    "long_complex_mission": {
+      "helpful_signals": [
+        "phase progress",
+        "blocked status",
+        "current actor",
+        "next major step"
+      ],
+      "notes": "Long missions benefit from sparse, high-value updates rather than frequent low-value chatter."
+    },
+    "interactive_debugging": {
+      "helpful_signals": [
+        "recent failure",
+        "last change",
+        "validation result"
+      ],
+      "notes": "Debugging benefits from concise state and immediate cause/effect visibility."
+    },
+    "research_heavy": {
+      "helpful_signals": [
+        "sources gathered",
+        "open unknowns",
+        "recommendation shift"
+      ],
+      "notes": "Research benefits from showing uncertainty resolution rather than constant progress ticks."
+    }
+  }
+}

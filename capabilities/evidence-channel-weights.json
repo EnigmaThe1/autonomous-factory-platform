@@ -1,0 +1,11 @@
+{
+  "version": "v17",
+  "weights": {
+    "mission_contract": 3,
+    "environment_fit": 2,
+    "execution_friction": 3,
+    "fallback_weakness": 2,
+    "validation_leverage": 2,
+    "trust_source_confidence": 1
+  }
+}

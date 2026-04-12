@@ -1,0 +1,21 @@
+{
+  "version": "v28",
+  "patterns": {
+    "broad_product_vision": {
+      "preferred_shaping": "outcome_then_scope_then_constraints",
+      "notes": "Broad product goals benefit from early extraction of outcome, rough scope, and constraints before detailed planning."
+    },
+    "repair_request": {
+      "preferred_shaping": "symptom_then_context_then_target_state",
+      "notes": "Repair goals benefit from clarifying symptom, context, and desired recovery state."
+    },
+    "research_goal": {
+      "preferred_shaping": "question_then decision-purpose",
+      "notes": "Research goals benefit from clarifying the decision or action the research is meant to support."
+    },
+    "automation_goal": {
+      "preferred_shaping": "desired endpoint_then_repeatability_then_surface",
+      "notes": "Automation goals benefit from clarifying the endpoint, repeatability needs, and expected surface of control."
+    }
+  }
+}

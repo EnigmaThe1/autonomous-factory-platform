@@ -1,0 +1,10 @@
+{
+  "id": "browser-ui-pack",
+  "description": "Optional UI/browser pack for flow validation and reproduction.",
+  "includes": [
+    "browser-tester agent",
+    "browser-ui-validator skill",
+    "browser integration/plugin"
+  ],
+  "default_activation": "on_demand"
+}

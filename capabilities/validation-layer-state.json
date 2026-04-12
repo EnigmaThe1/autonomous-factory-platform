@@ -1,0 +1,11 @@
+{
+  "version": "v31",
+  "generated_at": null,
+  "validation_biases": {
+    "proof_efficiency_bias": 0.75,
+    "confidence_signal_bias": 0.7,
+    "over_validation_avoidance_bias": 0.75,
+    "under_validation_detection_bias": 0.7,
+    "risk_sensitive_validation_bias": 0.7
+  }
+}

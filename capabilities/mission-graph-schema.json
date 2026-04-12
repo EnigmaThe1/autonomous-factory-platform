@@ -1,0 +1,27 @@
+{
+  "schema_version": "1.0",
+  "graph_fields": {
+    "mission_id": "string",
+    "summary": "string",
+    "execution_mode": "single_agent|specialist_agents|agent_team",
+    "phases": [
+      {
+        "id": "string",
+        "name": "string",
+        "type": "discover|plan|activate|implement|validate|review|report",
+        "depends_on": ["phase_id"],
+        "required_capabilities": ["capability_id"],
+        "status": "planned|ready|running|blocked|done",
+        "exit_criteria": ["string"]
+      }
+    ],
+    "checkpoints": [
+      {
+        "id": "string",
+        "after_phase": "phase_id",
+        "required": true,
+        "kind": "approval|review|validation|operator-check"
+      }
+    ]
+  }
+}

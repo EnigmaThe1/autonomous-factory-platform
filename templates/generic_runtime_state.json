@@ -1,0 +1,13 @@
+{
+  "active_mission": "mission-example",
+  "missions": [
+    {
+      "mission_id": "mission-example",
+      "current_phase": "discover",
+      "status": "planned",
+      "blocked_by": [],
+      "notes": []
+    }
+  ],
+  "last_updated_by": "runtime-orchestrator"
+}

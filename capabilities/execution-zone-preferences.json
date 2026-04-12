@@ -1,0 +1,22 @@
+{
+  "mode": "advisory",
+  "zones": [
+    {
+      "id": "workspace",
+      "description": "Normal project workspace execution"
+    },
+    {
+      "id": "container",
+      "description": "Containerized execution when available"
+    },
+    {
+      "id": "devcontainer",
+      "description": "Development container or isolated workspace"
+    },
+    {
+      "id": "ci",
+      "description": "Continuous integration or remote automation context"
+    }
+  ],
+  "principle": "Prefer safer zones when useful, but do not create bureaucracy for ordinary project work."
+}

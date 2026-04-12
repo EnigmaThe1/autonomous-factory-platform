@@ -1,0 +1,21 @@
+{
+  "version": "v36",
+  "patterns": {
+    "research_answer": {
+      "preferred_posture": "proven plus inferred separation",
+      "notes": "Research outputs often mix verified facts with synthesis; keep those separate."
+    },
+    "runtime_diagnosis": {
+      "preferred_posture": "observed plus assumed plus unknown",
+      "notes": "Diagnostics often require explicit separation between observed evidence and suspected cause."
+    },
+    "implementation_plan": {
+      "preferred_posture": "assumption-tagged plan",
+      "notes": "Plans may rely on assumptions that should stay visible until validated."
+    },
+    "delivery_claim": {
+      "preferred_posture": "proof-first completion",
+      "notes": "Completion claims should rely on actual proof, not momentum."
+    }
+  }
+}

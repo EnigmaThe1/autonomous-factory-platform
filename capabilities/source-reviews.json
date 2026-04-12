@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "reviews": [
+    {
+      "source_id": "anthropic-official-skills",
+      "review_state": "reviewed",
+      "review_notes": "Baseline trusted documentation/examples source.",
+      "recommended_next_state": "approved"
+    },
+    {
+      "source_id": "community-marketplace",
+      "review_state": "discovered",
+      "review_notes": "Do not activate without explicit review and approval.",
+      "recommended_next_state": "reviewed"
+    }
+  ]
+}

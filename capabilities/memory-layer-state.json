@@ -1,0 +1,11 @@
+{
+  "version": "v27",
+  "generated_at": null,
+  "memory_biases": {
+    "retention_selectivity_bias": 0.75,
+    "summary_compression_bias": 0.7,
+    "surfacing_relevance_bias": 0.7,
+    "forget_stale_bias": 0.65,
+    "cross_mission_reuse_bias": 0.75
+  }
+}

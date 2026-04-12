@@ -1,0 +1,19 @@
+{
+  "version": "v19",
+  "principle": "Learn from multiple missions to improve future capability decisions while preserving autonomy-first behavior.",
+  "learning_targets": [
+    "promotion usefulness",
+    "over_promotion frequency",
+    "fallback failure recurrence",
+    "archetype-specific capability value",
+    "environment-sensitive capability value"
+  ],
+  "bias_types": [
+    "earlier_suggestion",
+    "stronger_staging_bias",
+    "more_conservative_bias",
+    "phase_specific_bias",
+    "environment_specific_bias"
+  ],
+  "rule": "Use cross-mission learning as a soft biasing layer, not as a rigid gate."
+}

@@ -1,0 +1,18 @@
+{
+  "version": "v31",
+  "principle": "Improve validation quality over time by learning which checks, proofs, and confidence signals actually increase confidence without wasting effort.",
+  "learning_targets": [
+    "validation_strategy_quality",
+    "proof_efficiency",
+    "confidence_signal_quality",
+    "over_validation_reduction",
+    "under_validation_reduction",
+    "mission_pattern_validation_fit"
+  ],
+  "guardrails": [
+    "validation should remain purposeful and proportional",
+    "do not reward proof sprawl when lighter checks establish enough confidence",
+    "use stronger validation where risk or uncertainty truly warrants it"
+  ],
+  "rule": "Use mission outcomes to improve validation routes and confidence-building behavior without creating validation ritual."
+}

@@ -1,0 +1,25 @@
+{
+  "version": "v33",
+  "patterns": {
+    "clear_bug_fix": {
+      "preferred_collaboration": "solo_or_targeted_specialist",
+      "notes": "Clear focused repairs often benefit from solo execution with optional targeted specialist help."
+    },
+    "broad_unknown_build": {
+      "preferred_collaboration": "phased_specialist_collaboration",
+      "notes": "Broad unknown builds often benefit from phased specialist involvement rather than full early fan-out."
+    },
+    "complex_architecture_work": {
+      "preferred_collaboration": "pair_then_phased_team",
+      "notes": "Architecture-heavy work often benefits from pair-style design review before broader execution."
+    },
+    "multi-surface_delivery": {
+      "preferred_collaboration": "sequenced_then_selective_team",
+      "notes": "Multi-surface work benefits from sequencing first, then selective team expansion once interfaces stabilize."
+    },
+    "research_to_build": {
+      "preferred_collaboration": "solo_research_then_specialist_handoff",
+      "notes": "Research-to-build missions often benefit from bounded solo discovery before specialist implementation help."
+    }
+  }
+}

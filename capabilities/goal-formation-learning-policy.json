@@ -1,0 +1,18 @@
+{
+  "version": "v28",
+  "principle": "Improve how vague end-goals are sharpened into mission intents before compilation, while preserving autonomy and avoiding unnecessary friction.",
+  "learning_targets": [
+    "goal_ambiguity_detection",
+    "intent_sharpening_quality",
+    "safe_inference_quality",
+    "goal_scope_clarity",
+    "success_signal_extraction",
+    "over_narrowing_avoidance"
+  ],
+  "guardrails": [
+    "goal shaping should improve clarity without prematurely collapsing valid solution space",
+    "ask for clarification only when the uncertainty is genuinely blocking or risky",
+    "prefer intelligent sharpening over bureaucratic prompting"
+  ],
+  "rule": "Use mission outcomes to improve how raw goals are shaped into useful mission intent."
+}

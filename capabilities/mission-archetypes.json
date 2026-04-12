@@ -1,0 +1,81 @@
+{
+  "version": "v19",
+  "known_archetypes": {
+    "web_app_build": {
+      "keywords": [
+        "web app",
+        "frontend",
+        "backend",
+        "api",
+        "database"
+      ],
+      "likely_capabilities": [
+        "coding_pack",
+        "browser_ui_pack",
+        "data_db_pack"
+      ]
+    },
+    "ui_validation": {
+      "keywords": [
+        "ui",
+        "browser",
+        "visual",
+        "acceptance",
+        "regression"
+      ],
+      "likely_capabilities": [
+        "browser_ui_pack"
+      ]
+    },
+    "database_integration": {
+      "keywords": [
+        "database",
+        "postgres",
+        "sql",
+        "schema",
+        "query"
+      ],
+      "likely_capabilities": [
+        "data_db_pack",
+        "coding_pack"
+      ]
+    },
+    "deployment_runtime": {
+      "keywords": [
+        "deploy",
+        "docker",
+        "runtime",
+        "infra",
+        "healthcheck"
+      ],
+      "likely_capabilities": [
+        "ops_deploy_pack"
+      ]
+    },
+    "research_planning": {
+      "keywords": [
+        "research",
+        "docs",
+        "investigate",
+        "latest",
+        "compare"
+      ],
+      "likely_capabilities": [
+        "research_pack"
+      ]
+    },
+    "refactor_repair": {
+      "keywords": [
+        "refactor",
+        "fix",
+        "repair",
+        "cleanup",
+        "stability"
+      ],
+      "likely_capabilities": [
+        "coding_pack",
+        "research_pack"
+      ]
+    }
+  }
+}

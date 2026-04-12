@@ -1,0 +1,21 @@
+{
+  "version": "v27",
+  "patterns": {
+    "mission_postmortem": {
+      "preferred_memory_form": "compressed_summary",
+      "notes": "Postmortems are useful when reduced to failures, fixes, and lessons rather than kept as long raw narratives."
+    },
+    "tool_use_outcome": {
+      "preferred_memory_form": "pattern_entry",
+      "notes": "Tool outcomes are best stored as reusable bias patterns rather than verbose logs."
+    },
+    "project_constraints": {
+      "preferred_memory_form": "retained_fact",
+      "notes": "Stable cross-mission constraints often deserve direct retention."
+    },
+    "runtime_noise": {
+      "preferred_memory_form": "discard_or_brief_summary",
+      "notes": "Low-value repetitive runtime detail should usually not persist."
+    }
+  }
+}

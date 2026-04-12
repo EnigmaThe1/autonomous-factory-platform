@@ -1,0 +1,10 @@
+{
+  "id": "coding-pack",
+  "description": "Curated optional capability pack for implementation-heavy missions.",
+  "includes": [
+    "implementer agent",
+    "implementation-planning skill",
+    "validation-review skill"
+  ],
+  "default_activation": "on_demand"
+}

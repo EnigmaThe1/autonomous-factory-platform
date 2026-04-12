@@ -1,0 +1,18 @@
+{
+  "version": "v32",
+  "principle": "Improve execution quality by learning which overall approach patterns work best for different mission types, while preserving autonomy-first behavior.",
+  "learning_targets": [
+    "planning_depth_fit",
+    "exploration_commitment_balance",
+    "parallelism_timing_fit",
+    "iterative_vs_deep_design_fit",
+    "sequence_style_quality",
+    "mission_pattern_strategy_fit"
+  ],
+  "guardrails": [
+    "do not hard-lock the system into one execution style",
+    "preserve freedom to adapt strategy mid-mission",
+    "prefer soft strategic biases over rigid methodology rules"
+  ],
+  "rule": "Use mission outcomes to improve approach-pattern selection without collapsing execution into one static method."
+}

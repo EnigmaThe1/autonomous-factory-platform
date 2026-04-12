@@ -1,0 +1,14 @@
+{
+  "id": "example-pack",
+  "type": "plugin",
+  "summary": "Describe what this optional capability adds.",
+  "domains": ["general"],
+  "triggers": ["describe when it should be activated"],
+  "required_tools": ["list required tools or environment assumptions"],
+  "optional_tools": ["list optional tools"],
+  "activation_mode": "on_demand",
+  "resource_cost": "low",
+  "risk_level": "low",
+  "install_source": "local or marketplace",
+  "validation_requirements": ["describe how to validate its use"]
+}

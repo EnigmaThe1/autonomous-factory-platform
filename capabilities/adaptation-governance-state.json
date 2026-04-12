@@ -1,0 +1,11 @@
+{
+  "version": "v29",
+  "generated_at": null,
+  "governance_biases": {
+    "tentative_retention_bias": 0.75,
+    "soft_default_promotion_threshold": 0.7,
+    "overreaction_damping_bias": 0.7,
+    "rollback_readiness_bias": 0.55,
+    "stability_preservation_bias": 0.8
+  }
+}

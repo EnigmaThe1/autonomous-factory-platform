@@ -1,0 +1,18 @@
+{
+  "version": "v34",
+  "principle": "Improve mission resilience by learning how to respond to operator steering, interruptions, and partial invalidation without unnecessary reset or confusion.",
+  "learning_targets": [
+    "redirect_handling_quality",
+    "salvage_quality",
+    "pause_vs_continue_fit",
+    "intent_interpretation_quality",
+    "clarification_restraint",
+    "mission_recovery_fit"
+  ],
+  "guardrails": [
+    "do not restart whole missions when a narrower adaptation is enough",
+    "preserve room for intelligent human steering without destabilizing execution",
+    "prefer soft interruption-response biases over rigid recovery rules"
+  ],
+  "rule": "Use mission outcomes to improve interruption response and operator interaction without turning steering into workflow chaos."
+}

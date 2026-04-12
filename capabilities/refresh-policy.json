@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "default_cadence_by_source_state": {
+    "approved_official": "monthly",
+    "approved_community": "biweekly",
+    "reviewed": "monthly",
+    "discovered": "manual_or_on_demand"
+  },
+  "default_cadence_by_risk": {
+    "low": "monthly",
+    "medium": "biweekly",
+    "high": "weekly"
+  },
+  "never_auto_activate_on_refresh": true,
+  "refresh_updates_stage_to_review_queue": true,
+  "require_operator_approval_to_change_trust_or_activation": true,
+  "prefer_lightweight_metadata_refresh_first": true
+}

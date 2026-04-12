@@ -1,0 +1,11 @@
+{
+  "version": "v39",
+  "generated_at": null,
+  "resource_biases": {
+    "bounded_exploration_bias": 0.75,
+    "diminishing_returns_bias": 0.8,
+    "good_enough_bias": 0.7,
+    "waste_avoidance_bias": 0.8,
+    "extra_depth_when_warranted_bias": 0.65
+  }
+}

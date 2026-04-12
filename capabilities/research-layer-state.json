@@ -1,0 +1,11 @@
+{
+  "version": "v30",
+  "generated_at": null,
+  "research_biases": {
+    "authoritative_source_bias": 0.8,
+    "freshness_sensitivity_bias": 0.65,
+    "research_scope_restraint_bias": 0.75,
+    "research_handoff_bias": 0.75,
+    "over_browsing_avoidance_bias": 0.8
+  }
+}

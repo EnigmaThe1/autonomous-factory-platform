@@ -1,0 +1,19 @@
+{
+  "version": "v24",
+  "principle": "Continuously improve the balance of soft guidance, trust posture, and host-boundary clarity without reducing project-space autonomy.",
+  "learning_targets": [
+    "soft_guidance_value",
+    "trust_posture_balance",
+    "host_boundary_clarity",
+    "guidance_friction_vs_benefit",
+    "autonomy_preservation",
+    "policy_drift_detection"
+  ],
+  "guardrails": [
+    "project-space work should remain broadly free",
+    "host-boundary protection should stay narrow and firm",
+    "soft guidance should remain advisory unless true host risk is involved",
+    "policy adjustments should be reversible and evidence-based"
+  ],
+  "rule": "Use evidence to rebalance policy guidance and trust posture while preserving autonomy-first behavior."
+}

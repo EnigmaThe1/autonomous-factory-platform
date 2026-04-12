@@ -1,0 +1,18 @@
+{
+  "version": "v26",
+  "principle": "Improve runtime controls and visible signals so the system is easier to understand and steer without reducing autonomy or creating clutter.",
+  "learning_targets": [
+    "signal_value",
+    "signal_timing_quality",
+    "control_visibility_balance",
+    "surface_clutter_reduction",
+    "operator_trust_support",
+    "interaction_surface_legibility"
+  ],
+  "guardrails": [
+    "keep the visible surface lightweight",
+    "avoid redundant controls and status noise",
+    "use surface improvements to support autonomy, not to micromanage it"
+  ],
+  "rule": "Use mission outcomes to improve the execution surface while keeping it minimal and informative."
+}

@@ -1,0 +1,22 @@
+{
+  "schema_version": "1.0",
+  "generated_at": "2026-04-11",
+  "items": [
+    {
+      "discovery_id": "disc-001",
+      "capability_id": "browser_ui_pack",
+      "source_id": "official_browser_tools",
+      "change_type": "updated_entry_detected",
+      "summary": "Browser tooling pack metadata should be re-reviewed before broader activation.",
+      "status": "queued_for_review"
+    },
+    {
+      "discovery_id": "disc-002",
+      "capability_id": "community_ci_pack",
+      "source_id": "community-marketplace",
+      "change_type": "new_discovery",
+      "summary": "New community CI capability discovered; keep staged until trust review completes.",
+      "status": "queued_for_review"
+    }
+  ]
+}

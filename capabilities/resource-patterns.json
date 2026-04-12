@@ -1,0 +1,21 @@
+{
+  "version": "v39",
+  "patterns": {
+    "research_heavy_unknown": {
+      "preferred_budget_shape": "bounded_deep_then_commit",
+      "notes": "Some unknown-heavy missions justify deeper early exploration, but not endless drift."
+    },
+    "clear_bug_fix": {
+      "preferred_budget_shape": "tight_targeted_effort",
+      "notes": "Clear repair work often benefits from tighter bounded effort."
+    },
+    "high_risk_delivery": {
+      "preferred_budget_shape": "extra_validation_depth",
+      "notes": "High-risk missions may justify spending more effort before claiming completion."
+    },
+    "multi-option_comparison": {
+      "preferred_budget_shape": "decision_bounded_comparison",
+      "notes": "Comparisons benefit from explicit decision criteria and capped exploration."
+    }
+  }
+}

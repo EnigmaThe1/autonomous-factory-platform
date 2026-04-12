@@ -1,0 +1,21 @@
+{
+  "version": "v30",
+  "patterns": {
+    "current_tools_or_products": {
+      "preferred_research_shape": "fresh authoritative sources first",
+      "notes": "Current product, tool, or version questions benefit from higher freshness sensitivity and authoritative sources."
+    },
+    "stable_architecture_or_design": {
+      "preferred_research_shape": "targeted authoritative sources with restrained browsing",
+      "notes": "Stable architectural reasoning usually benefits from focused sources rather than broad freshness-heavy research."
+    },
+    "implementation_with_unknown_api": {
+      "preferred_research_shape": "docs-first then action handoff",
+      "notes": "Unknown API work benefits from official docs first and a clean handoff into implementation."
+    },
+    "broad_comparison_request": {
+      "preferred_research_shape": "bounded comparison with explicit decision criteria",
+      "notes": "Broad comparisons benefit from bounded source sets and explicit decision framing."
+    }
+  }
+}

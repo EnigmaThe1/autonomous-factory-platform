@@ -1,0 +1,10 @@
+{
+  "id": "ops-deploy-pack",
+  "description": "Optional infrastructure and deployment pack for runtime or environment work.",
+  "includes": [
+    "ops diagnostics",
+    "environment checks",
+    "log-driven investigation"
+  ],
+  "default_activation": "on_demand"
+}

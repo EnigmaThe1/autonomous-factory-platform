@@ -1,0 +1,25 @@
+{
+  "version": "v32",
+  "patterns": {
+    "broad_unknown_build": {
+      "preferred_strategy": "explore_then_iterate",
+      "notes": "Broad unknown builds often benefit from initial exploration followed by iterative execution."
+    },
+    "clear_bug_fix": {
+      "preferred_strategy": "targeted_minimal_change",
+      "notes": "Clear repair missions often benefit from focused action with minimal planning overhead."
+    },
+    "complex_architecture_work": {
+      "preferred_strategy": "design_then_phased_execution",
+      "notes": "Architecture-heavy missions often benefit from stronger up-front structure."
+    },
+    "multi-surface_delivery": {
+      "preferred_strategy": "phased_then_selective_parallelism",
+      "notes": "Multi-surface work often benefits from sequencing first, then parallelism once interfaces are clearer."
+    },
+    "research_to_build": {
+      "preferred_strategy": "bounded_research_then_commit",
+      "notes": "Research-to-build missions benefit from bounded exploration before committing to implementation."
+    }
+  }
+}

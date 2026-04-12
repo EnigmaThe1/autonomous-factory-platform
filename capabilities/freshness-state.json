@@ -1,0 +1,35 @@
+{
+  "schema_version": "1.0",
+  "items": {
+    "anthropic-official-skills": {
+      "kind": "source",
+      "freshness": "fresh",
+      "last_checked": "2026-04-11",
+      "next_review_due": "2026-05-11"
+    },
+    "community-marketplace": {
+      "kind": "source",
+      "freshness": "warning",
+      "last_checked": "2026-03-20",
+      "next_review_due": "2026-04-03"
+    },
+    "browser_ui_pack": {
+      "kind": "capability",
+      "freshness": "warning",
+      "last_checked": "2026-03-28",
+      "next_review_due": "2026-04-11"
+    },
+    "github_plugin": {
+      "kind": "capability",
+      "freshness": "fresh",
+      "last_checked": "2026-04-10",
+      "next_review_due": "2026-05-10"
+    },
+    "postgres_mcp": {
+      "kind": "capability",
+      "freshness": "fresh",
+      "last_checked": "2026-04-09",
+      "next_review_due": "2026-04-23"
+    }
+  }
+}

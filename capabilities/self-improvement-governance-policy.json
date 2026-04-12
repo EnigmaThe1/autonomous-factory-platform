@@ -1,0 +1,25 @@
+{
+  "version": "v29",
+  "principle": "Adaptation should mature gradually from tentative signal to stronger soft default only when evidence is broad and consistent enough.",
+  "maturity_stages": [
+    "tentative",
+    "emerging",
+    "established_soft_default",
+    "dampen",
+    "rollback"
+  ],
+  "learning_targets": [
+    "adaptation_maturity",
+    "evidence_breadth",
+    "consistency_over_time",
+    "anti_overreaction",
+    "rollback_readiness",
+    "stability_preservation"
+  ],
+  "guardrails": [
+    "do not let small-sample evidence create strong persistent biases too quickly",
+    "prefer reversible soft defaults over rigid promotion",
+    "preserve broad project-space freedom while improving adaptive stability"
+  ],
+  "rule": "Use governance to stabilize self-improvement without freezing it."
+}

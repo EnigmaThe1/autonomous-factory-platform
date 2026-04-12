@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "sources": [
+    {
+      "id": "anthropic-official-skills",
+      "type": "official",
+      "provider": "Anthropic",
+      "status": "reviewed",
+      "default_action": "allow_reviewed",
+      "scope": ["skills", "plugins", "guidance"],
+      "notes": "Official Claude Code examples and patterns."
+    },
+    {
+      "id": "anthropic-marketplace",
+      "type": "official",
+      "provider": "Anthropic",
+      "status": "reviewed",
+      "default_action": "allow_reviewed",
+      "scope": ["plugins"],
+      "notes": "Official plugin marketplace and catalog flows."
+    },
+    {
+      "id": "community-marketplace",
+      "type": "community",
+      "provider": "Mixed",
+      "status": "discovered",
+      "default_action": "ask",
+      "scope": ["plugins", "skills"],
+      "notes": "Community-maintained marketplace entries require review before use."
+    }
+  ]
+}

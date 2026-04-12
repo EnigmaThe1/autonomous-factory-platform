@@ -1,0 +1,37 @@
+{
+  "schema_version": "1.0",
+  "lifecycle_states": [
+    "discovered",
+    "reviewed",
+    "approved",
+    "mirrored",
+    "activated",
+    "retired"
+  ],
+  "capabilities": {
+    "github_plugin": {
+      "state": "approved",
+      "source": "anthropic_marketplace",
+      "mirror": "preferred",
+      "last_updated": "2026-04-11"
+    },
+    "browser_ui_pack": {
+      "state": "reviewed",
+      "source": "official_browser_tools",
+      "mirror": "optional",
+      "last_updated": "2026-04-11"
+    },
+    "postgres_mcp": {
+      "state": "approved",
+      "source": "trusted_mcp",
+      "mirror": "optional",
+      "last_updated": "2026-04-11"
+    },
+    "slack_plugin": {
+      "state": "discovered",
+      "source": "marketplace_catalog",
+      "mirror": "not_planned",
+      "last_updated": "2026-04-11"
+    }
+  }
+}

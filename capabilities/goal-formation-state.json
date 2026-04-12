@@ -1,0 +1,11 @@
+{
+  "version": "v28",
+  "generated_at": null,
+  "goal_biases": {
+    "ambiguity_detection_bias": 0.65,
+    "intent_sharpening_bias": 0.7,
+    "safe_inference_bias": 0.7,
+    "clarification_restraint_bias": 0.8,
+    "over_narrowing_avoidance_bias": 0.85
+  }
+}

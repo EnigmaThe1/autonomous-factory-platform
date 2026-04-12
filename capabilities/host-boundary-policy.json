@@ -1,0 +1,72 @@
+{
+  "version": "12.0.0",
+  "principle": "Protect the host, not the intelligence.",
+  "platforms": {
+    "linux": {
+      "protected_write_prefixes": [
+        "/etc/",
+        "/boot/",
+        "/usr/",
+        "/bin/",
+        "/sbin/",
+        "/lib/",
+        "/lib64/",
+        "/var/lib/",
+        "/root/"
+      ],
+      "sensitive_read_paths": [
+        "/etc/shadow",
+        "/etc/sudoers",
+        "/root/"
+      ]
+    },
+    "macos": {
+      "protected_write_prefixes": [
+        "/System/",
+        "/Library/",
+        "/private/etc/",
+        "/bin/",
+        "/sbin/",
+        "/usr/"
+      ],
+      "sensitive_read_paths": [
+        "/etc/master.passwd",
+        "/private/etc/sudoers",
+        "/var/root/"
+      ]
+    },
+    "windows": {
+      "protected_write_prefixes": [
+        "C:\\Windows\\",
+        "C:\\Program Files\\",
+        "C:\\Program Files (x86)\\",
+        "C:\\ProgramData\\Microsoft\\",
+        "C:\\Boot\\"
+      ],
+      "sensitive_read_paths": [
+        "C:\\Windows\\System32\\config\\SAM",
+        "C:\\Windows\\System32\\config\\SECURITY"
+      ]
+    }
+  },
+  "destructive_command_patterns": [
+    "rm -rf /",
+    "rm -rf /*",
+    "mkfs",
+    "fdisk",
+    "dd if=",
+    "diskpart",
+    "format ",
+    "bcdedit",
+    "shutdown ",
+    "reboot ",
+    "halt",
+    "poweroff",
+    "sudo ",
+    "doas "
+  ],
+  "notes": [
+    "This policy protects the host machine and critical OS integrity only.",
+    "Inside the project/task space, agents retain broad autonomy."
+  ]
+}
