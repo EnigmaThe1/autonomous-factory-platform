@@ -32,3 +32,24 @@ logs/
 
 # Docker
 docker-compose.override.yml
+
+# Platform/AI/IDE/Cache/DB/Local
+.mcp.json
+.my-ai-extension/
+.claude/
+.codex/
+.pytest_cache/
+.ruff_cache/
+af_platform.db
+workspace/
+approval-previews/
+memory/
+missions/
+
+# Miscellaneous
+data.txt
+good.txt
+test.txt
+
+# VS Code settings (if not needed in repo)
+settings.json
