@@ -13,7 +13,9 @@ import javax.crypto.spec.GCMParameterSpec
 
 class SecureSettings(context: Context) {
     private val prefs = context.getSharedPreferences("llm_council_v4", Context.MODE_PRIVATE)
-    private val alias = "llm_council_provider_keys"
+    // Keep the original alias so OpenRouter credentials saved by v4.x remain decryptable after upgrade.
+    // The same app-private AES key protects the additional provider credentials as well.
+    private val alias = "llm_council_openrouter_key"
     private val separator = ":"
 
     private fun secretKey(): SecretKey {
