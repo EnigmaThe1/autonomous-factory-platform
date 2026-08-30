@@ -12,13 +12,17 @@ class CouncilEngine(
     private val client: OpenRouterClient,
     private val settings: SecureSettings
 ) {
+    companion object {
+        private const val STAGE1_MAX_TOKENS = 2048
+        private const val STAGE2_MAX_TOKENS = 1536
+        private const val STAGE3_MAX_TOKENS = 3072
+    }
+
     suspend fun run(question: String, onUpdate: suspend (CouncilRun) -> Unit): CouncilRun = coroutineScope {
         val configured = settings.councilModels()
         var run = CouncilRun(question = question, stage = CouncilStage.STAGE1)
         onUpdate(run)
 
-        // Pre-flight against the live OpenRouter catalogue. This prevents retired or
-        // removed model IDs from consuming request slots and makes stale selections explicit.
         val catalogueIds = try { client.models().map { it.id }.toSet() } catch (_: Exception) { emptySet() }
         val unavailable = if (catalogueIds.isEmpty()) emptyList() else configured.filter { it !in catalogueIds }
         val selected = if (catalogueIds.isEmpty()) configured else configured.filter { it in catalogueIds }
@@ -39,7 +43,7 @@ class CouncilEngine(
             async {
                 semaphore.withPermit {
                     val started = System.currentTimeMillis()
-                    try { ModelAnswer(model, client.chat(model, question), System.currentTimeMillis() - started) }
+                    try { ModelAnswer(model, client.chat(model, question, STAGE1_MAX_TOKENS), System.currentTimeMillis() - started) }
                     catch (e: Exception) { ModelAnswer(model, "", System.currentTimeMillis() - started, e.message ?: e.toString()) }
                 }
             }
@@ -95,14 +99,12 @@ FINAL RANKING:
 
 Now provide your evaluation and ranking:"""
 
-        // Only models that successfully answered Stage 1 review the responses. This avoids
-        // immediately repeating requests to models that already failed in Stage 1.
         val stage2 = successful1.map { answer -> answer.model }.map { model ->
             async {
                 semaphore.withPermit {
                     val started = System.currentTimeMillis()
                     try {
-                        val text = client.chat(model, rankingPrompt)
+                        val text = client.chat(model, rankingPrompt, STAGE2_MAX_TOKENS)
                         RankingReview(model, text, parseRanking(text), System.currentTimeMillis() - started)
                     } catch (e: Exception) {
                         RankingReview(model, "", emptyList(), System.currentTimeMillis() - started, e.message ?: e.toString())
@@ -136,13 +138,14 @@ Your task as Chairman is to synthesize all of this information into a single, co
 
 Provide a clear, well-reasoned final answer that represents the council's collective wisdom:"""
 
-        // Prefer the configured chairman when it is currently available. If it has been
-        // removed from OpenRouter, fall back to the best surviving Stage-1 model rather
-        // than failing a completed council run solely because of a stale chairman ID.
         val configuredChairman = settings.chairman()
-        val chairmanModel = if (catalogueIds.isEmpty() || configuredChairman in catalogueIds) configuredChairman else successful1.first().model
+        val survivingModels = successful1.map { it.model }.toSet()
+        val chairmanModel = when {
+            configuredChairman in survivingModels -> configuredChairman
+            else -> successful1.first().model
+        }
         val started = System.currentTimeMillis()
-        val chairman = try { ModelAnswer(chairmanModel, client.chat(chairmanModel, chairmanPrompt), System.currentTimeMillis() - started) }
+        val chairman = try { ModelAnswer(chairmanModel, client.chat(chairmanModel, chairmanPrompt, STAGE3_MAX_TOKENS), System.currentTimeMillis() - started) }
         catch (e: Exception) { ModelAnswer(chairmanModel, "", System.currentTimeMillis() - started, e.message ?: e.toString()) }
         run = if (chairman.error == null) run.copy(stage = CouncilStage.COMPLETE, chairman = chairman, finishedAt = System.currentTimeMillis())
         else run.copy(stage = CouncilStage.ERROR, chairman = chairman, errors = run.errors + ("$chairmanModel (chairman)" to chairman.error), finishedAt = System.currentTimeMillis())
