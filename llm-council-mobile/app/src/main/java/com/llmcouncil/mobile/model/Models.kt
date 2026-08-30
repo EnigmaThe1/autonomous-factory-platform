@@ -19,6 +19,9 @@ data class OpenRouterModel(
     val returnsText: Boolean get() = outputModalities.isEmpty() || "text" in outputModalities
 }
 
+/** Missing pricing is unknown, not free. Existing UI comparisons therefore treat null as +infinity. */
+operator fun Double?.compareTo(other: Double): Int = (this ?: Double.POSITIVE_INFINITY).compareTo(other)
+
 data class CouncilProfile(
     val name: String,
     val councilModels: List<String>,
