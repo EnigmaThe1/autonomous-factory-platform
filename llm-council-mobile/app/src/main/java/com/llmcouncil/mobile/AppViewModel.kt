@@ -19,6 +19,8 @@ import kotlinx.coroutines.withContext
 import kotlin.math.ln
 
 class AppViewModel(private val app: Application) : AndroidViewModel(app) {
+    companion object { private const val QUALIFICATION_PROTOCOL_VERSION = 1 }
+
     private val settings = SecureSettings(app)
     private val client = OpenRouterClient(settings)
     private val historyDb = HistoryDb(app)
@@ -217,10 +219,19 @@ Do not return only JSON, a tool call, nil, null, or a single word."""
         return try {
             val answer = client.chat(model.id, prompt, 160)
             val ok = qualificationUsable(answer)
-            withContext(Dispatchers.IO) { healthDb.record(model.id, ok, if (ok) null else "Qualification returned empty/malformed/noncompliant text") }
+            withContext(Dispatchers.IO) {
+                healthDb.recordQualification(
+                    model.id,
+                    QUALIFICATION_PROTOCOL_VERSION,
+                    ok,
+                    if (ok) null else "Qualification returned empty/malformed/noncompliant text"
+                )
+            }
             ok
         } catch (e: Exception) {
-            withContext(Dispatchers.IO) { healthDb.record(model.id, false, "Qualification: ${e.message ?: e}") }
+            withContext(Dispatchers.IO) {
+                healthDb.recordQualification(model.id, QUALIFICATION_PROTOCOL_VERSION, false, "Qualification: ${e.message ?: e}")
+            }
             false
         }
     }
@@ -239,7 +250,10 @@ Do not return only JSON, a tool call, nil, null, or a single word."""
         val byId = health.associateBy { it.modelKey }
         val freshCutoff = System.currentTimeMillis() - 7L * 24 * 60 * 60 * 1000
         val verified = candidates.filter {
-            byId[it.id]?.let { h -> h.verifiedWorking && h.lastSuccessAt >= freshCutoff && h.consecutiveFailures == 0 } == true
+            byId[it.id]?.let { h ->
+                h.verifiedWorking && h.qualificationVersion == QUALIFICATION_PROTOCOL_VERSION &&
+                    h.lastQualifiedAt >= freshCutoff && h.consecutiveFailures == 0
+            } == true
         }.toMutableList()
 
         if (verified.size < 4 && probeIfNeeded) {
@@ -251,7 +265,9 @@ Do not return only JSON, a tool call, nil, null, or a single word."""
             for (model in ranked) {
                 if (model in verified || verified.size >= 4) continue
                 val old = byId[model.id]
-                if (old != null && old.consecutiveFailures >= 2 && old.lastTestedAt >= freshCutoff) continue
+                val recentlyFailedCurrentProtocol = old != null && old.qualificationVersion == QUALIFICATION_PROTOCOL_VERSION &&
+                    !old.qualificationPassed && old.lastQualifiedAt >= freshCutoff
+                if (recentlyFailedCurrentProtocol && old.consecutiveFailures >= 2) continue
                 _verificationStatus.value = "Qualifying ${model.name}… ${verified.size}/4 confirmed"
                 if (qualifyModel(model)) verified += model
             }
@@ -259,7 +275,9 @@ Do not return only JSON, a tool call, nil, null, or a single word."""
 
         val latest = withContext(Dispatchers.IO) { healthDb.list() }
         _health.value = latest
-        val workingIds = latest.filter { it.verifiedWorking && it.consecutiveFailures == 0 }.map { it.modelKey }.toSet()
+        val workingIds = latest.filter {
+            it.verifiedWorking && it.qualificationVersion == QUALIFICATION_PROTOCOL_VERSION && it.lastQualifiedAt >= freshCutoff && it.consecutiveFailures == 0
+        }.map { it.modelKey }.toSet()
         val chosen = diverseTop(candidates.filter { it.id in workingIds }, 4) { ln(1.0 + it.contextLength.coerceAtLeast(1).toDouble()) }
         if (chosen.size < 2) {
             _modelsError.value = "Free qualification found fewer than two council-usable models. Open Model Learning Register to inspect failures and re-test later."
