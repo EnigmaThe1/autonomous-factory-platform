@@ -13,7 +13,17 @@
         android:usesCleartextTraffic="false">
         <activity
             android:name=".MainActivity"
-            android:exported="true">
+            android:exported="true"
+            android:label="LLM Council">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name=".RepoAuditActivity"
+            android:exported="true"
+            android:label="LLM Council Audit">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -21,6 +31,11 @@
         </activity>
         <service
             android:name=".CouncilService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync"
+            android:stopWithTask="false" />
+        <service
+            android:name=".RepoAuditService"
             android:exported="false"
             android:foregroundServiceType="dataSync"
             android:stopWithTask="false" />
