@@ -49,7 +49,10 @@ data class ModelHealth(
     val lastStatus: String = "untested",
     val lastError: String? = null,
     val lastTestedAt: Long = 0L,
-    val lastSuccessAt: Long = 0L
+    val lastSuccessAt: Long = 0L,
+    val qualificationVersion: Int = 0,
+    val qualificationPassed: Boolean = false,
+    val lastQualifiedAt: Long = 0L
 ) {
     val verifiedWorking: Boolean get() = lastStatus == "working" && lastSuccessAt > 0L
 }
