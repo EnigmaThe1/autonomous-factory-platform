@@ -13,8 +13,7 @@ import javax.crypto.spec.GCMParameterSpec
 
 class SecureSettings(context: Context) {
     private val prefs = context.getSharedPreferences("llm_council_v4", Context.MODE_PRIVATE)
-    // Keep the original alias so OpenRouter credentials saved by v4.x remain decryptable after upgrade.
-    // The same app-private AES key protects the additional provider credentials as well.
+    // Preserve the original alias so all v4.x encrypted credentials remain decryptable.
     private val alias = "llm_council_openrouter_key"
     private val separator = ":"
 
@@ -56,7 +55,6 @@ class SecureSettings(context: Context) {
 
     fun setApiKey(value: String) = setOpenRouterKey(value)
     fun getApiKey(): String = getOpenRouterKey()
-
     fun setOpenRouterKey(value: String) = setSecret("api_key_enc", value)
     fun getOpenRouterKey(): String = getSecret("api_key_enc")
     fun setOpenAiKey(value: String) = setSecret("openai_key_enc", value)
@@ -65,10 +63,14 @@ class SecureSettings(context: Context) {
     fun getAnthropicKey(): String = getSecret("anthropic_key_enc")
     fun setGeminiKey(value: String) = setSecret("gemini_key_enc", value)
     fun getGeminiKey(): String = getSecret("gemini_key_enc")
+    fun setGitHubToken(value: String) = setSecret("github_token_enc", value)
+    fun getGitHubToken(): String = getSecret("github_token_enc")
+
+    fun exportTreeUri(): String? = prefs.getString("export_tree_uri", null)
+    fun setExportTreeUri(value: String?) { prefs.edit().apply { if (value == null) remove("export_tree_uri") else putString("export_tree_uri", value) }.apply() }
 
     fun councilModels(): List<String> = prefs.getStringSet("council_models", null)?.toList()?.sorted()
         ?: listOf("openai/gpt-5.1", "google/gemini-3-pro-preview", "anthropic/claude-sonnet-4.5", "x-ai/grok-4")
-
     fun setCouncilModels(ids: Set<String>) { prefs.edit().putStringSet("council_models", ids).apply() }
     fun chairman(): String = prefs.getString("chairman_model", "google/gemini-3-pro-preview") ?: "google/gemini-3-pro-preview"
     fun setChairman(id: String) { prefs.edit().putString("chairman_model", id).apply() }
