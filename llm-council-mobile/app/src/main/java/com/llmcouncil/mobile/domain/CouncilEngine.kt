@@ -1,5 +1,6 @@
 package com.llmcouncil.mobile.domain
 
+import com.llmcouncil.mobile.data.ModelHealthDb
 import com.llmcouncil.mobile.data.OpenRouterClient
 import com.llmcouncil.mobile.data.SecureSettings
 import com.llmcouncil.mobile.model.*
@@ -10,12 +11,26 @@ import kotlin.math.round
 
 class CouncilEngine(
     private val client: OpenRouterClient,
-    private val settings: SecureSettings
+    private val settings: SecureSettings,
+    private val healthDb: ModelHealthDb
 ) {
     companion object {
         private const val STAGE1_MAX_TOKENS = 2048
         private const val STAGE2_MAX_TOKENS = 1536
         private const val STAGE3_MAX_TOKENS = 3072
+    }
+
+    private suspend fun trackedChat(model: String, prompt: String, maxTokens: Int): String {
+        return try {
+            val text = client.chat(model, prompt, maxTokens)
+            val ok = text.isNotBlank()
+            withContext(Dispatchers.IO) { healthDb.record(model, ok, if (ok) null else "Empty response") }
+            if (!ok) throw IllegalStateException("Model returned an empty response")
+            text
+        } catch (e: Exception) {
+            withContext(Dispatchers.IO) { healthDb.record(model, false, e.message ?: e.toString()) }
+            throw e
+        }
     }
 
     suspend fun run(question: String, onUpdate: suspend (CouncilRun) -> Unit): CouncilRun = coroutineScope {
@@ -26,7 +41,7 @@ class CouncilEngine(
         val catalogueIds = try { client.models().map { it.id }.toSet() } catch (_: Exception) { emptySet() }
         val unavailable = if (catalogueIds.isEmpty()) emptyList() else configured.filter { it !in catalogueIds }
         val selected = if (catalogueIds.isEmpty()) configured else configured.filter { it in catalogueIds }
-        val preflightErrors = unavailable.associateWith { "Model is no longer present in the current OpenRouter catalogue. Choose a replacement in Models." }
+        val preflightErrors = unavailable.associateWith { "Model is no longer present in the currently configured provider catalogues. Choose a replacement in Models." }
 
         if (selected.size < 2) {
             run = run.copy(
@@ -43,7 +58,7 @@ class CouncilEngine(
             async {
                 semaphore.withPermit {
                     val started = System.currentTimeMillis()
-                    try { ModelAnswer(model, client.chat(model, question, STAGE1_MAX_TOKENS), System.currentTimeMillis() - started) }
+                    try { ModelAnswer(model, trackedChat(model, question, STAGE1_MAX_TOKENS), System.currentTimeMillis() - started) }
                     catch (e: Exception) { ModelAnswer(model, "", System.currentTimeMillis() - started, e.message ?: e.toString()) }
                 }
             }
@@ -99,12 +114,12 @@ FINAL RANKING:
 
 Now provide your evaluation and ranking:"""
 
-        val stage2 = successful1.map { answer -> answer.model }.map { model ->
+        val stage2 = successful1.map { it.model }.map { model ->
             async {
                 semaphore.withPermit {
                     val started = System.currentTimeMillis()
                     try {
-                        val text = client.chat(model, rankingPrompt, STAGE2_MAX_TOKENS)
+                        val text = trackedChat(model, rankingPrompt, STAGE2_MAX_TOKENS)
                         RankingReview(model, text, parseRanking(text), System.currentTimeMillis() - started)
                     } catch (e: Exception) {
                         RankingReview(model, "", emptyList(), System.currentTimeMillis() - started, e.message ?: e.toString())
@@ -140,12 +155,9 @@ Provide a clear, well-reasoned final answer that represents the council's collec
 
         val configuredChairman = settings.chairman()
         val survivingModels = successful1.map { it.model }.toSet()
-        val chairmanModel = when {
-            configuredChairman in survivingModels -> configuredChairman
-            else -> successful1.first().model
-        }
+        val chairmanModel = if (configuredChairman in survivingModels) configuredChairman else successful1.first().model
         val started = System.currentTimeMillis()
-        val chairman = try { ModelAnswer(chairmanModel, client.chat(chairmanModel, chairmanPrompt, STAGE3_MAX_TOKENS), System.currentTimeMillis() - started) }
+        val chairman = try { ModelAnswer(chairmanModel, trackedChat(chairmanModel, chairmanPrompt, STAGE3_MAX_TOKENS), System.currentTimeMillis() - started) }
         catch (e: Exception) { ModelAnswer(chairmanModel, "", System.currentTimeMillis() - started, e.message ?: e.toString()) }
         run = if (chairman.error == null) run.copy(stage = CouncilStage.COMPLETE, chairman = chairman, finishedAt = System.currentTimeMillis())
         else run.copy(stage = CouncilStage.ERROR, chairman = chairman, errors = run.errors + ("$chairmanModel (chairman)" to chairman.error), finishedAt = System.currentTimeMillis())
