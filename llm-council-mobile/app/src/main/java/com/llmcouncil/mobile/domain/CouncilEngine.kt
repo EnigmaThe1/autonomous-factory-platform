@@ -33,9 +33,14 @@ class CouncilEngine(
         }
     }
 
-    suspend fun run(question: String, onUpdate: suspend (CouncilRun) -> Unit): CouncilRun = coroutineScope {
+    suspend fun run(
+        question: String,
+        resume: CouncilRun? = null,
+        onUpdate: suspend (CouncilRun) -> Unit
+    ): CouncilRun = coroutineScope {
         val configured = settings.councilModels()
-        var run = CouncilRun(question = question, stage = CouncilStage.STAGE1)
+        var run = resume?.takeIf { it.question == question && it.stage !in listOf(CouncilStage.COMPLETE, CouncilStage.CANCELLED) }
+            ?: CouncilRun(question = question, stage = CouncilStage.STAGE1)
         onUpdate(run)
 
         val catalogueIds = try { client.models().map { it.id }.toSet() } catch (_: Exception) { emptySet() }
@@ -43,7 +48,7 @@ class CouncilEngine(
         val selected = if (catalogueIds.isEmpty()) configured else configured.filter { it in catalogueIds }
         val preflightErrors = unavailable.associateWith { "Model is no longer present in the currently configured provider catalogues. Choose a replacement in Models." }
 
-        if (selected.size < 2) {
+        if (selected.size < 2 && run.stage1.isEmpty()) {
             run = run.copy(
                 stage = CouncilStage.ERROR,
                 errors = preflightErrors + ("Council" to "Stage 1 cannot start: fewer than two currently available council models are selected."),
@@ -54,31 +59,41 @@ class CouncilEngine(
         }
 
         val semaphore = Semaphore(settings.maxConcurrency())
-        val stage1 = selected.map { model ->
-            async {
-                semaphore.withPermit {
-                    val started = System.currentTimeMillis()
-                    try { ModelAnswer(model, trackedChat(model, question, STAGE1_MAX_TOKENS), System.currentTimeMillis() - started) }
-                    catch (e: Exception) { ModelAnswer(model, "", System.currentTimeMillis() - started, e.message ?: e.toString()) }
-                }
-            }
-        }.awaitAll()
-        val successful1 = stage1.filter { it.error == null && it.text.isNotBlank() }
-        val stage1Errors = stage1.mapNotNull { it.error?.let { e -> it.model to e } }.toMap()
-        run = run.copy(stage1 = stage1, errors = preflightErrors + stage1Errors)
-        onUpdate(run)
 
+        val stage1: List<ModelAnswer>
+        val resumeStage1 = run.stage1.filter { it.error == null && it.text.isNotBlank() }
+        if (run.stage1.isNotEmpty() && resumeStage1.size >= 2) {
+            stage1 = run.stage1
+            run = run.copy(stage = CouncilStage.STAGE2, finishedAt = null)
+            onUpdate(run)
+        } else {
+            run = run.copy(stage = CouncilStage.STAGE1, stage1 = emptyList(), stage2 = emptyList(), aggregate = emptyList(), chairman = null, finishedAt = null)
+            onUpdate(run)
+            stage1 = selected.map { model ->
+                async {
+                    semaphore.withPermit {
+                        val started = System.currentTimeMillis()
+                        try { ModelAnswer(model, trackedChat(model, question, STAGE1_MAX_TOKENS), System.currentTimeMillis() - started) }
+                        catch (e: Exception) { ModelAnswer(model, "", System.currentTimeMillis() - started, e.message ?: e.toString()) }
+                    }
+                }
+            }.awaitAll()
+            val stage1Errors = stage1.mapNotNull { it.error?.let { e -> it.model to e } }.toMap()
+            run = run.copy(stage1 = stage1, errors = preflightErrors + stage1Errors)
+            onUpdate(run)
+        }
+
+        val successful1 = stage1.filter { it.error == null && it.text.isNotBlank() }
         if (successful1.size < 2) {
             run = run.copy(
                 stage = CouncilStage.ERROR,
-                errors = run.errors + ("Council" to "Stopped after Stage 1: ${successful1.size}/${selected.size} available models produced usable answers. At least two are required for peer review."),
+                errors = run.errors + ("Council" to "Stopped after Stage 1: ${successful1.size}/${stage1.size.coerceAtLeast(selected.size)} available models produced usable answers. At least two are required for peer review."),
                 finishedAt = System.currentTimeMillis()
             )
             onUpdate(run)
             return@coroutineScope run
         }
 
-        run = run.copy(stage = CouncilStage.STAGE2); onUpdate(run)
         val labelToModel = LinkedHashMap<String, String>()
         val responsesText = buildString {
             successful1.forEachIndexed { index, answer ->
@@ -88,6 +103,7 @@ class CouncilEngine(
                 append(label).append(":\n").append(answer.text)
             }
         }
+
         val rankingPrompt = """You are evaluating different responses to the following question:
 
 Question: $question
@@ -114,25 +130,40 @@ FINAL RANKING:
 
 Now provide your evaluation and ranking:"""
 
-        val stage2 = successful1.map { it.model }.map { model ->
-            async {
-                semaphore.withPermit {
-                    val started = System.currentTimeMillis()
-                    try {
-                        val text = trackedChat(model, rankingPrompt, STAGE2_MAX_TOKENS)
-                        RankingReview(model, text, parseRanking(text), System.currentTimeMillis() - started)
-                    } catch (e: Exception) {
-                        RankingReview(model, "", emptyList(), System.currentTimeMillis() - started, e.message ?: e.toString())
+        val stage2: List<RankingReview>
+        if (run.stage2.isNotEmpty()) {
+            stage2 = run.stage2
+            run = run.copy(stage = CouncilStage.STAGE3, finishedAt = null)
+            onUpdate(run)
+        } else {
+            run = run.copy(stage = CouncilStage.STAGE2, finishedAt = null)
+            onUpdate(run)
+            stage2 = successful1.map { it.model }.map { model ->
+                async {
+                    semaphore.withPermit {
+                        val started = System.currentTimeMillis()
+                        try {
+                            val text = trackedChat(model, rankingPrompt, STAGE2_MAX_TOKENS)
+                            RankingReview(model, text, parseRanking(text), System.currentTimeMillis() - started)
+                        } catch (e: Exception) {
+                            RankingReview(model, "", emptyList(), System.currentTimeMillis() - started, e.message ?: e.toString())
+                        }
                     }
                 }
-            }
-        }.awaitAll()
-        val aggregate = aggregate(stage2, labelToModel)
-        val errors = run.errors + stage2.mapNotNull { it.error?.let { e -> "${it.model} (review)" to e } }.toMap()
-        run = run.copy(stage2 = stage2, aggregate = aggregate, errors = errors)
-        onUpdate(run)
+            }.awaitAll()
+            val aggregate = aggregate(stage2, labelToModel)
+            val errors = run.errors + stage2.mapNotNull { it.error?.let { e -> "${it.model} (review)" to e } }.toMap()
+            run = run.copy(stage2 = stage2, aggregate = aggregate, errors = errors)
+            onUpdate(run)
+        }
 
-        run = run.copy(stage = CouncilStage.STAGE3); onUpdate(run)
+        if (run.aggregate.isEmpty()) {
+            run = run.copy(aggregate = aggregate(stage2, labelToModel))
+            onUpdate(run)
+        }
+
+        run = run.copy(stage = CouncilStage.STAGE3, finishedAt = null)
+        onUpdate(run)
         val stage1Text = successful1.joinToString("\n\n") { "Model: ${it.model}\nResponse: ${it.text}" }
         val successful2 = stage2.filter { it.error == null && it.text.isNotBlank() }
         val stage2Text = successful2.joinToString("\n\n") { "Model: ${it.model}\nRanking: ${it.text}" }
