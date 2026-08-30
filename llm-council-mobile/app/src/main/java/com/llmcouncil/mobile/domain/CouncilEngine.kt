@@ -13,9 +13,26 @@ class CouncilEngine(
     private val settings: SecureSettings
 ) {
     suspend fun run(question: String, onUpdate: suspend (CouncilRun) -> Unit): CouncilRun = coroutineScope {
-        val selected = settings.councilModels()
+        val configured = settings.councilModels()
         var run = CouncilRun(question = question, stage = CouncilStage.STAGE1)
         onUpdate(run)
+
+        // Pre-flight against the live OpenRouter catalogue. This prevents retired or
+        // removed model IDs from consuming request slots and makes stale selections explicit.
+        val catalogueIds = try { client.models().map { it.id }.toSet() } catch (_: Exception) { emptySet() }
+        val unavailable = if (catalogueIds.isEmpty()) emptyList() else configured.filter { it !in catalogueIds }
+        val selected = if (catalogueIds.isEmpty()) configured else configured.filter { it in catalogueIds }
+        val preflightErrors = unavailable.associateWith { "Model is no longer present in the current OpenRouter catalogue. Choose a replacement in Models." }
+
+        if (selected.size < 2) {
+            run = run.copy(
+                stage = CouncilStage.ERROR,
+                errors = preflightErrors + ("Council" to "Stage 1 cannot start: fewer than two currently available council models are selected."),
+                finishedAt = System.currentTimeMillis()
+            )
+            onUpdate(run)
+            return@coroutineScope run
+        }
 
         val semaphore = Semaphore(settings.maxConcurrency())
         val stage1 = selected.map { model ->
@@ -28,11 +45,18 @@ class CouncilEngine(
             }
         }.awaitAll()
         val successful1 = stage1.filter { it.error == null && it.text.isNotBlank() }
-        run = run.copy(stage1 = stage1, errors = stage1.mapNotNull { it.error?.let { e -> it.model to e } }.toMap())
+        val stage1Errors = stage1.mapNotNull { it.error?.let { e -> it.model to e } }.toMap()
+        run = run.copy(stage1 = stage1, errors = preflightErrors + stage1Errors)
         onUpdate(run)
-        if (successful1.isEmpty()) {
-            run = run.copy(stage = CouncilStage.ERROR, finishedAt = System.currentTimeMillis())
-            onUpdate(run); return@coroutineScope run
+
+        if (successful1.size < 2) {
+            run = run.copy(
+                stage = CouncilStage.ERROR,
+                errors = run.errors + ("Council" to "Stopped after Stage 1: ${successful1.size}/${selected.size} available models produced usable answers. At least two are required for peer review."),
+                finishedAt = System.currentTimeMillis()
+            )
+            onUpdate(run)
+            return@coroutineScope run
         }
 
         run = run.copy(stage = CouncilStage.STAGE2); onUpdate(run)
@@ -71,7 +95,9 @@ FINAL RANKING:
 
 Now provide your evaluation and ranking:"""
 
-        val stage2 = selected.map { model ->
+        // Only models that successfully answered Stage 1 review the responses. This avoids
+        // immediately repeating requests to models that already failed in Stage 1.
+        val stage2 = successful1.map { answer -> answer.model }.map { model ->
             async {
                 semaphore.withPermit {
                     val started = System.currentTimeMillis()
@@ -110,7 +136,11 @@ Your task as Chairman is to synthesize all of this information into a single, co
 
 Provide a clear, well-reasoned final answer that represents the council's collective wisdom:"""
 
-        val chairmanModel = settings.chairman()
+        // Prefer the configured chairman when it is currently available. If it has been
+        // removed from OpenRouter, fall back to the best surviving Stage-1 model rather
+        // than failing a completed council run solely because of a stale chairman ID.
+        val configuredChairman = settings.chairman()
+        val chairmanModel = if (catalogueIds.isEmpty() || configuredChairman in catalogueIds) configuredChairman else successful1.first().model
         val started = System.currentTimeMillis()
         val chairman = try { ModelAnswer(chairmanModel, client.chat(chairmanModel, chairmanPrompt), System.currentTimeMillis() - started) }
         catch (e: Exception) { ModelAnswer(chairmanModel, "", System.currentTimeMillis() - started, e.message ?: e.toString()) }
