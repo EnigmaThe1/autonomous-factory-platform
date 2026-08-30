@@ -22,13 +22,8 @@
         </activity>
         <activity
             android:name=".RepoAuditActivity"
-            android:exported="true"
-            android:label="LLM Council Audit">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity>
+            android:exported="false"
+            android:label="Repository Audit" />
         <service
             android:name=".CouncilService"
             android:exported="false"
