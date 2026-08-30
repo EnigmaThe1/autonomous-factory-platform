@@ -1,16 +1,16 @@
 package com.llmcouncil.mobile
 
 import android.app.Application
+import android.content.Intent
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.llmcouncil.mobile.data.HistoryDb
 import com.llmcouncil.mobile.data.ModelHealthDb
 import com.llmcouncil.mobile.data.OpenRouterClient
 import com.llmcouncil.mobile.data.SecureSettings
-import com.llmcouncil.mobile.domain.CouncilEngine
 import com.llmcouncil.mobile.model.*
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -18,15 +18,13 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.math.ln
 
-class AppViewModel(app: Application) : AndroidViewModel(app) {
+class AppViewModel(private val app: Application) : AndroidViewModel(app) {
     private val settings = SecureSettings(app)
     private val client = OpenRouterClient(settings)
     private val historyDb = HistoryDb(app)
     private val healthDb = ModelHealthDb(app)
-    private val engine = CouncilEngine(client, settings, healthDb)
 
-    private val _run = MutableStateFlow(CouncilRun(""))
-    val run: StateFlow<CouncilRun> = _run.asStateFlow()
+    val run: StateFlow<CouncilRun> = CouncilRuntime.run
     private val _models = MutableStateFlow<List<OpenRouterModel>>(emptyList())
     val models: StateFlow<List<OpenRouterModel>> = _models.asStateFlow()
     private val _modelsLoading = MutableStateFlow(false)
@@ -41,7 +39,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     val verificationStatus: StateFlow<String?> = _verificationStatus.asStateFlow()
     private val _selectionVersion = MutableStateFlow(0)
     val selectionVersion: StateFlow<Int> = _selectionVersion.asStateFlow()
-    private var activeRun: Job? = null
+
+    init {
+        CouncilRuntime.initialise(app)
+        loadHistory()
+    }
 
     fun hasApiKey(): Boolean = settings.getOpenRouterKey().isNotBlank()
     fun saveApiKey(key: String) = saveProviderKey(ModelSource.OPENROUTER, key)
@@ -77,8 +79,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             try {
                 _models.value = client.models()
                 if (settings.activePreset() == "Free") resolveFreePreset(probeIfNeeded = false)
-            } catch (e: Exception) { _modelsError.value = e.message ?: e.toString() }
-            finally { _modelsLoading.value = false }
+            } catch (e: Exception) {
+                _modelsError.value = e.message ?: e.toString()
+            } finally {
+                _modelsLoading.value = false
+            }
         }
     }
 
@@ -104,23 +109,17 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private fun isRestricted(model: OpenRouterModel): Boolean {
         val text = model.description.lowercase()
         return listOf(
-            "only available on agentic harnesses",
-            "only available through agentic harnesses",
-            "only available via agentic",
-            "restricted to agentic",
-            "not available through the api",
-            "only available to"
+            "only available on agentic harnesses", "only available through agentic harnesses",
+            "only available via agentic", "restricted to agentic", "not available through the api", "only available to"
         ).any(text::contains)
     }
 
     private fun isSpecialPurpose(model: OpenRouterModel): Boolean {
         val s = "${model.apiId} ${model.name}".lowercase()
-        val blocked = listOf(
-            "embedding", "rerank", "moderation", "whisper", "transcription",
-            "text-to-speech", "tts", "speech", "image-generation", "imagegen",
-            "text-to-video", "video-generation", "lyria", "musicgen", "clip-preview"
-        )
-        return blocked.any(s::contains)
+        return listOf(
+            "embedding", "rerank", "moderation", "whisper", "transcription", "text-to-speech", "tts", "speech",
+            "image-generation", "imagegen", "text-to-video", "video-generation", "lyria", "musicgen", "clip-preview"
+        ).any(s::contains)
     }
 
     fun isCouncilEligible(model: OpenRouterModel): Boolean =
@@ -153,31 +152,25 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             viewModelScope.launch { resolveFreePreset(probeIfNeeded = true) }
             return
         }
-        val catalogue = _models.value
-        if (catalogue.isEmpty()) return
-        val textModels = catalogue.filter(::isCouncilEligible)
-        val chosen: List<OpenRouterModel> = when (name) {
+        val textModels = _models.value.filter(::isCouncilEligible)
+        val chosen = when (name) {
             "Low cost" -> {
-                val priced = textModels.filter { it.pricingKnown }
-                val ranked = priced.sortedWith(compareBy<OpenRouterModel> { totalPricePerMillion(it) }.thenByDescending { it.contextLength })
-                val firstPerProvider = ranked.distinctBy { it.provider }.take(4).toMutableList()
-                if (firstPerProvider.size < 4) ranked.filter { it !in firstPerProvider }.take(4 - firstPerProvider.size).forEach(firstPerProvider::add)
-                firstPerProvider
+                val ranked = textModels.filter { it.pricingKnown }
+                    .sortedWith(compareBy<OpenRouterModel> { totalPricePerMillion(it) }.thenByDescending { it.contextLength })
+                val out = ranked.distinctBy { it.provider }.take(4).toMutableList()
+                ranked.filter { it !in out }.take(4 - out.size).forEach(out::add)
+                out
             }
             "Balanced" -> {
                 val priced = textModels.filter { it.pricingKnown }
-                diverseTop(if (priced.isNotEmpty()) priced else textModels, 4) { model ->
-                    val contextScore = ln(1.0 + model.contextLength.coerceAtLeast(1).toDouble())
-                    val costPenalty = ln(1.0 + totalPricePerMillion(model).coerceAtLeast(0.0))
-                    contextScore - (0.55 * costPenalty)
+                diverseTop(if (priced.isNotEmpty()) priced else textModels, 4) {
+                    ln(1.0 + it.contextLength.coerceAtLeast(1).toDouble()) - 0.55 * ln(1.0 + totalPricePerMillion(it).coerceAtLeast(0.0))
                 }
             }
             "High-end" -> {
                 val premium = textModels.filter { it.pricingKnown && !it.isFree }
-                diverseTop(if (premium.isNotEmpty()) premium else textModels, 4) { model ->
-                    val premiumSignal = ln(1.0 + totalPricePerMillion(model).coerceAtLeast(0.0))
-                    val contextSignal = ln(1.0 + model.contextLength.coerceAtLeast(1).toDouble())
-                    (1.8 * premiumSignal) + contextSignal
+                diverseTop(if (premium.isNotEmpty()) premium else textModels, 4) {
+                    1.8 * ln(1.0 + totalPricePerMillion(it).coerceAtLeast(0.0)) + ln(1.0 + it.contextLength.coerceAtLeast(1).toDouble())
                 }
             }
             else -> emptyList()
@@ -193,10 +186,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         _modelsError.value = null
         settings.setActivePreset(name)
         settings.setCouncilModels(chosen.map { it.id }.toSet())
-        val chairman = chosen.maxByOrNull { model ->
-            val priceSignal = if (name == "Free") 0.0 else ln(1.0 + totalPricePerMillion(model).coerceAtLeast(0.0))
-            val contextSignal = ln(1.0 + model.contextLength.coerceAtLeast(1).toDouble())
-            priceSignal + contextSignal
+        val chairman = chosen.maxByOrNull {
+            (if (name == "Free") 0.0 else ln(1.0 + totalPricePerMillion(it).coerceAtLeast(0.0))) +
+                ln(1.0 + it.contextLength.coerceAtLeast(1).toDouble())
         } ?: chosen.first()
         settings.setChairman(chairman.id)
         _selectionVersion.value++
@@ -204,7 +196,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     private suspend fun resolveFreePreset(probeIfNeeded: Boolean) {
         if (_models.value.isEmpty()) {
-            try { _models.value = client.models() } catch (e: Exception) { _modelsError.value = e.message ?: e.toString(); return }
+            try { _models.value = client.models() }
+            catch (e: Exception) { _modelsError.value = e.message ?: e.toString(); return }
         }
         val candidates = _models.value.filter(::isFreeCouncilEligible)
         if (candidates.size < 2) {
@@ -214,25 +207,21 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val health = withContext(Dispatchers.IO) { healthDb.list() }
         val byId = health.associateBy { it.modelKey }
         val freshCutoff = System.currentTimeMillis() - 7L * 24 * 60 * 60 * 1000
-        val verified = candidates.filter { c -> byId[c.id]?.let { it.verifiedWorking && it.lastSuccessAt >= freshCutoff } == true }.toMutableList()
+        val verified = candidates.filter { byId[it.id]?.let { h -> h.verifiedWorking && h.lastSuccessAt >= freshCutoff } == true }.toMutableList()
 
         if (verified.size < 4 && probeIfNeeded) {
-            _verificationStatus.value = "Verifying free models… ${verified.size}/4 confirmed"
             val ranked = candidates.sortedWith(
                 compareByDescending<OpenRouterModel> { byId[it.id]?.verifiedWorking == true }
                     .thenBy { byId[it.id]?.consecutiveFailures ?: 0 }
                     .thenByDescending { it.contextLength }
             )
             for (model in ranked) {
-                if (model in verified) continue
-                if (verified.size >= 4) break
+                if (model in verified || verified.size >= 4) continue
                 val old = byId[model.id]
                 if (old != null && old.consecutiveFailures >= 2 && old.lastTestedAt >= freshCutoff) continue
                 _verificationStatus.value = "Testing ${model.name}… ${verified.size}/4 confirmed"
-                val ok = try {
-                    val answer = client.chat(model.id, "Reply with exactly: OK", 16)
-                    answer.trim().isNotBlank()
-                } catch (e: Exception) {
+                val ok = try { client.chat(model.id, "Reply with exactly: OK", 16).isNotBlank() }
+                catch (e: Exception) {
                     withContext(Dispatchers.IO) { healthDb.record(model.id, false, e.message ?: e.toString()) }
                     false
                 }
@@ -243,11 +232,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             }
         }
 
-        val latestHealth = withContext(Dispatchers.IO) { healthDb.list() }
-        _health.value = latestHealth
-        val workingIds = latestHealth.filter { it.verifiedWorking }.map { it.modelKey }.toSet()
-        val working = candidates.filter { it.id in workingIds }
-        val chosen = diverseTop(working, 4) { ln(1.0 + it.contextLength.coerceAtLeast(1).toDouble()) }
+        val latest = withContext(Dispatchers.IO) { healthDb.list() }
+        _health.value = latest
+        val workingIds = latest.filter { it.verifiedWorking }.map { it.modelKey }.toSet()
+        val chosen = diverseTop(candidates.filter { it.id in workingIds }, 4) { ln(1.0 + it.contextLength.coerceAtLeast(1).toDouble()) }
         if (chosen.size < 2) {
             _modelsError.value = "Free verification found fewer than two working models. Open Model Learning Register to inspect failures and re-test later."
             _verificationStatus.value = "Free verification finished: ${chosen.size} working model(s)"
@@ -257,45 +245,31 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         _verificationStatus.value = "Free verification complete: ${chosen.size} verified working models selected"
     }
 
-    fun verifyFreeModels() {
-        settings.setActivePreset("Free")
-        viewModelScope.launch { resolveFreePreset(probeIfNeeded = true) }
-    }
-
-    fun loadHealth() {
-        viewModelScope.launch { _health.value = withContext(Dispatchers.IO) { healthDb.list() } }
-    }
-
-    fun clearHealth() {
-        viewModelScope.launch {
-            withContext(Dispatchers.IO) { healthDb.clear() }
-            _health.value = emptyList()
-        }
-    }
+    fun verifyFreeModels() { settings.setActivePreset("Free"); viewModelScope.launch { resolveFreePreset(true) } }
+    fun loadHealth() { viewModelScope.launch { _health.value = withContext(Dispatchers.IO) { healthDb.list() } } }
+    fun clearHealth() { viewModelScope.launch { withContext(Dispatchers.IO) { healthDb.clear() }; _health.value = emptyList() } }
 
     fun runCouncil(question: String) {
-        if (question.isBlank() || activeRun?.isActive == true) return
-        activeRun = viewModelScope.launch {
-            try {
-                if (settings.activePreset() == "Free") resolveFreePreset(probeIfNeeded = true)
-                val result = engine.run(question.trim()) { _run.value = it }
-                loadHealth()
-                val final = result.chairman
-                if (result.stage == CouncilStage.COMPLETE && final != null) {
-                    val title = question.trim().lineSequence().firstOrNull().orEmpty().take(48).ifBlank { "New conversation" }
-                    withContext(Dispatchers.IO) { historyDb.insert(title, question.trim(), final.text, final.model, settings.councilModels()) }
-                    loadHistory()
-                }
-            } catch (e: kotlinx.coroutines.CancellationException) {
-                _run.value = _run.value.copy(stage = CouncilStage.CANCELLED, finishedAt = System.currentTimeMillis())
-            } catch (e: Exception) {
-                _run.value = _run.value.copy(stage = CouncilStage.ERROR, errors = _run.value.errors + ("App" to (e.message ?: e.toString())), finishedAt = System.currentTimeMillis())
+        val clean = question.trim()
+        if (clean.isBlank() || run.value.stage in listOf(CouncilStage.STAGE1, CouncilStage.STAGE2, CouncilStage.STAGE3)) return
+        viewModelScope.launch {
+            if (settings.activePreset() == "Free") resolveFreePreset(probeIfNeeded = true)
+            val intent = Intent(app, CouncilService::class.java).apply {
+                action = CouncilService.ACTION_START
+                putExtra(CouncilService.EXTRA_QUESTION, clean)
             }
+            ContextCompat.startForegroundService(app, intent)
         }
     }
 
-    fun cancelRun() { activeRun?.cancel() }
-    fun clearRun() { if (activeRun?.isActive != true) _run.value = CouncilRun("") }
+    fun cancelRun() {
+        app.startService(Intent(app, CouncilService::class.java).apply { action = CouncilService.ACTION_CANCEL })
+    }
+
+    fun clearRun() {
+        if (run.value.stage !in listOf(CouncilStage.STAGE1, CouncilStage.STAGE2, CouncilStage.STAGE3)) CouncilRuntime.clear(app)
+    }
+
     fun loadHistory() { viewModelScope.launch { _history.value = withContext(Dispatchers.IO) { historyDb.list() } } }
     fun clearHistory() { viewModelScope.launch { withContext(Dispatchers.IO) { historyDb.clear() }; _history.value = emptyList() } }
 }
