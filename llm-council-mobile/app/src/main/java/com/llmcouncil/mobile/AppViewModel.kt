@@ -67,14 +67,35 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private fun totalPricePerMillion(model: OpenRouterModel): Double =
         model.promptPricePerMillion + model.completionPricePerMillion
 
-    private fun isFree(model: OpenRouterModel): Boolean =
-        model.promptPricePerToken <= 0.0 && model.completionPricePerToken <= 0.0
+    private fun isRestricted(model: OpenRouterModel): Boolean {
+        val text = model.description.lowercase()
+        return listOf(
+            "only available on agentic harnesses",
+            "only available through agentic harnesses",
+            "only available via agentic",
+            "restricted to agentic",
+            "not available through the api"
+        ).any(text::contains)
+    }
 
-    /**
-     * Pick a small council while preferring provider diversity. The first pass takes
-     * the best-scoring model from each provider; the second pass fills any remaining
-     * slots from the overall ranking.
-     */
+    private fun isSpecialPurpose(model: OpenRouterModel): Boolean {
+        val s = "${model.id} ${model.name}".lowercase()
+        val blocked = listOf(
+            "embedding", "rerank", "moderation", "whisper", "transcription",
+            "text-to-speech", "tts", "speech", "image-generation", "imagegen",
+            "text-to-video", "video-generation", "lyria", "musicgen"
+        )
+        return blocked.any(s::contains)
+    }
+
+    fun isCouncilEligible(model: OpenRouterModel): Boolean =
+        model.acceptsText && model.returnsText && !isRestricted(model) && !isSpecialPurpose(model) &&
+            model.id != "openrouter/auto" && model.id != "openrouter/free"
+
+    fun isFreeCouncilEligible(model: OpenRouterModel): Boolean = isCouncilEligible(model) && model.isFree
+
+    fun freeEligibleCount(): Int = _models.value.count(::isFreeCouncilEligible)
+
     private fun diverseTop(
         source: List<OpenRouterModel>,
         limit: Int = 4,
@@ -94,26 +115,21 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         return out
     }
 
-    /**
-     * Dynamic presets use the live OpenRouter catalogue rather than hard-coded IDs.
-     * This intentionally means a preset can change as OpenRouter adds/removes models
-     * or changes pricing.
-     */
     fun applyPreset(name: String) {
         val catalogue = _models.value
         if (catalogue.isEmpty()) return
+        val textModels = catalogue.filter(::isCouncilEligible)
 
         val chosen: List<OpenRouterModel> = when (name) {
             "Free" -> {
-                val free = catalogue.filter(::isFree)
+                val free = textModels.filter(::isFreeCouncilEligible)
                 diverseTop(free, 4) { model ->
-                    // For genuinely free models, prefer larger context and provider diversity.
                     ln(1.0 + model.contextLength.coerceAtLeast(1).toDouble())
                 }
             }
             "Low cost" -> {
-                // Cheapest live models first; for equal pricing prefer larger context.
-                val ranked = catalogue.sortedWith(
+                val priced = textModels.filter { it.pricingKnown }
+                val ranked = priced.sortedWith(
                     compareBy<OpenRouterModel> { totalPricePerMillion(it) }
                         .thenByDescending { it.contextLength }
                 )
@@ -126,19 +142,16 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 firstPerProvider
             }
             "Balanced" -> {
-                // Reward context/capability headroom but penalise very expensive models.
-                diverseTop(catalogue, 4) { model ->
+                val priced = textModels.filter { it.pricingKnown }
+                diverseTop(if (priced.isNotEmpty()) priced else textModels, 4) { model ->
                     val contextScore = ln(1.0 + model.contextLength.coerceAtLeast(1).toDouble())
                     val costPenalty = ln(1.0 + totalPricePerMillion(model).coerceAtLeast(0.0))
                     contextScore - (0.55 * costPenalty)
                 }
             }
             "High-end" -> {
-                // OpenRouter does not expose one universal quality ranking in /models.
-                // Use live premium pricing + context as a practical quality/capability proxy,
-                // while keeping provider diversity so one vendor cannot fill the whole council.
-                val premium = catalogue.filterNot(::isFree)
-                diverseTop(if (premium.isNotEmpty()) premium else catalogue, 4) { model ->
+                val premium = textModels.filter { it.pricingKnown && !it.isFree }
+                diverseTop(if (premium.isNotEmpty()) premium else textModels, 4) { model ->
                     val premiumSignal = ln(1.0 + totalPricePerMillion(model).coerceAtLeast(0.0))
                     val contextSignal = ln(1.0 + model.contextLength.coerceAtLeast(1).toDouble())
                     (1.8 * premiumSignal) + contextSignal
@@ -147,14 +160,22 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             else -> emptyList()
         }
 
-        if (chosen.size < 2) return
+        if (chosen.size < 2) {
+            _modelsError.value = when (name) {
+                "Free" -> "Fewer than two unrestricted free text-chat models are currently available in the live OpenRouter catalogue."
+                else -> "Fewer than two eligible text-chat models are currently available for this preset."
+            }
+            return
+        }
+        _modelsError.value = null
         settings.setCouncilModels(chosen.map { it.id }.toSet())
 
-        // Chairman follows the strongest member of the chosen preset rather than an old fixed ID.
+        // Chairman is always one of the actual chosen members. In Free mode this guarantees
+        // Stage 3 cannot silently route to a paid model.
         val chairman = chosen.maxByOrNull { model ->
-            val premiumSignal = ln(1.0 + totalPricePerMillion(model).coerceAtLeast(0.0))
+            val priceSignal = if (name == "Free") 0.0 else ln(1.0 + totalPricePerMillion(model).coerceAtLeast(0.0))
             val contextSignal = ln(1.0 + model.contextLength.coerceAtLeast(1).toDouble())
-            premiumSignal + contextSignal
+            priceSignal + contextSignal
         } ?: chosen.first()
         settings.setChairman(chairman.id)
     }
