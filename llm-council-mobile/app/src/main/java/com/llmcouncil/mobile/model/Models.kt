@@ -54,7 +54,7 @@ data class ModelHealth(
     val qualificationPassed: Boolean = false,
     val lastQualifiedAt: Long = 0L
 ) {
-    val verifiedWorking: Boolean get() = lastStatus == "working" && lastSuccessAt > 0L
+    val verifiedWorking: Boolean get() = qualificationPassed && qualificationVersion >= 1 && lastStatus == "working" && lastSuccessAt > 0L
 }
 
 data class CouncilProfile(
