@@ -31,7 +31,7 @@ class RepoAuditViewModel(private val app: Application) : AndroidViewModel(app) {
     private val _message = MutableStateFlow<String?>(null)
     val message: StateFlow<String?> = _message.asStateFlow()
 
-    init { RepoAuditRuntime.initialise(app) }
+    init { RepoAuditRuntime.initialise(app); CouncilRuntime.initialise(app) }
 
     fun githubConfigured(): Boolean = settings.getGitHubToken().isNotBlank()
     fun saveGitHubToken(value: String) {
@@ -79,8 +79,23 @@ class RepoAuditViewModel(private val app: Application) : AndroidViewModel(app) {
             _loading.value = true
             try {
                 val result = withContext(Dispatchers.IO) { ExportManager.exportRepoAudit(app, uri, current) }
-                _message.value = "Exported to $result"
+                _message.value = "Exported repository audit to $result"
             } catch (e: Exception) { _message.value = "Export failed: ${e.message ?: e}" }
+            finally { _loading.value = false }
+        }
+    }
+
+    fun exportLastCouncil() {
+        val uri = exportTree()
+        if (uri == null) { _message.value = "Choose an export workspace folder first"; return }
+        val council = CouncilRuntime.run.value
+        if (council.question.isBlank()) { _message.value = "No standard council run is available to export"; return }
+        viewModelScope.launch {
+            _loading.value = true
+            try {
+                val result = withContext(Dispatchers.IO) { ExportManager.exportCouncilRun(app, uri, council) }
+                _message.value = "Exported council run to $result"
+            } catch (e: Exception) { _message.value = "Council export failed: ${e.message ?: e}" }
             finally { _loading.value = false }
         }
     }
