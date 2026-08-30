@@ -4,13 +4,19 @@ data class OpenRouterModel(
     val id: String,
     val name: String,
     val contextLength: Int = 0,
-    val promptPricePerToken: Double = 0.0,
-    val completionPricePerToken: Double = 0.0,
+    val promptPricePerToken: Double? = null,
+    val completionPricePerToken: Double? = null,
+    val inputModalities: Set<String> = emptySet(),
+    val outputModalities: Set<String> = emptySet(),
     val provider: String = id.substringBefore('/'),
     val description: String = ""
 ) {
-    val promptPricePerMillion: Double get() = promptPricePerToken * 1_000_000.0
-    val completionPricePerMillion: Double get() = completionPricePerToken * 1_000_000.0
+    val pricingKnown: Boolean get() = promptPricePerToken != null && completionPricePerToken != null
+    val promptPricePerMillion: Double get() = (promptPricePerToken ?: 0.0) * 1_000_000.0
+    val completionPricePerMillion: Double get() = (completionPricePerToken ?: 0.0) * 1_000_000.0
+    val isFree: Boolean get() = pricingKnown && promptPricePerToken == 0.0 && completionPricePerToken == 0.0
+    val acceptsText: Boolean get() = inputModalities.isEmpty() || "text" in inputModalities
+    val returnsText: Boolean get() = outputModalities.isEmpty() || "text" in outputModalities
 }
 
 data class CouncilProfile(
