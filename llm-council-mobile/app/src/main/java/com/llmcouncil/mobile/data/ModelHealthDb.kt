@@ -7,7 +7,7 @@ import android.database.sqlite.SQLiteOpenHelper
 import com.llmcouncil.mobile.model.ModelHealth
 import com.llmcouncil.mobile.model.ModelSource
 
-class ModelHealthDb(context: Context) : SQLiteOpenHelper(context, "llm_council_health.db", null, 1) {
+class ModelHealthDb(context: Context) : SQLiteOpenHelper(context, "llm_council_health.db", null, 2) {
     override fun onCreate(db: SQLiteDatabase) {
         db.execSQL(
             """CREATE TABLE model_health(
@@ -19,19 +19,26 @@ class ModelHealthDb(context: Context) : SQLiteOpenHelper(context, "llm_council_h
                 last_status TEXT NOT NULL DEFAULT 'untested',
                 last_error TEXT,
                 last_tested_at INTEGER NOT NULL DEFAULT 0,
-                last_success_at INTEGER NOT NULL DEFAULT 0
+                last_success_at INTEGER NOT NULL DEFAULT 0,
+                qualification_version INTEGER NOT NULL DEFAULT 0,
+                qualification_passed INTEGER NOT NULL DEFAULT 0,
+                last_qualified_at INTEGER NOT NULL DEFAULT 0
             )""".trimIndent()
         )
     }
 
-    override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) = Unit
+    override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
+        if (oldVersion < 2) {
+            db.execSQL("ALTER TABLE model_health ADD COLUMN qualification_version INTEGER NOT NULL DEFAULT 0")
+            db.execSQL("ALTER TABLE model_health ADD COLUMN qualification_passed INTEGER NOT NULL DEFAULT 0")
+            db.execSQL("ALTER TABLE model_health ADD COLUMN last_qualified_at INTEGER NOT NULL DEFAULT 0")
+        }
+    }
 
     fun record(modelKey: String, success: Boolean, error: String? = null) {
         val now = System.currentTimeMillis()
         val old = get(modelKey)
-        val values = ContentValues().apply {
-            put("model_key", modelKey)
-            put("source", ModelSource.fromKey(modelKey).name)
+        val values = baseValues(modelKey, old).apply {
             put("successes", (old?.successes ?: 0) + if (success) 1 else 0)
             put("failures", (old?.failures ?: 0) + if (success) 0 else 1)
             put("consecutive_failures", if (success) 0 else (old?.consecutiveFailures ?: 0) + 1)
@@ -41,6 +48,39 @@ class ModelHealthDb(context: Context) : SQLiteOpenHelper(context, "llm_council_h
             put("last_success_at", if (success) now else (old?.lastSuccessAt ?: 0L))
         }
         writableDatabase.insertWithOnConflict("model_health", null, values, SQLiteDatabase.CONFLICT_REPLACE)
+    }
+
+    fun recordQualification(modelKey: String, protocolVersion: Int, passed: Boolean, error: String? = null) {
+        val now = System.currentTimeMillis()
+        val old = get(modelKey)
+        val values = baseValues(modelKey, old).apply {
+            put("successes", (old?.successes ?: 0) + if (passed) 1 else 0)
+            put("failures", (old?.failures ?: 0) + if (passed) 0 else 1)
+            put("consecutive_failures", if (passed) 0 else (old?.consecutiveFailures ?: 0) + 1)
+            put("last_status", if (passed) "working" else "failed")
+            put("last_error", if (passed) null else error?.take(800))
+            put("last_tested_at", now)
+            put("last_success_at", if (passed) now else (old?.lastSuccessAt ?: 0L))
+            put("qualification_version", protocolVersion)
+            put("qualification_passed", if (passed) 1 else 0)
+            put("last_qualified_at", now)
+        }
+        writableDatabase.insertWithOnConflict("model_health", null, values, SQLiteDatabase.CONFLICT_REPLACE)
+    }
+
+    private fun baseValues(modelKey: String, old: ModelHealth?) = ContentValues().apply {
+        put("model_key", modelKey)
+        put("source", ModelSource.fromKey(modelKey).name)
+        put("successes", old?.successes ?: 0)
+        put("failures", old?.failures ?: 0)
+        put("consecutive_failures", old?.consecutiveFailures ?: 0)
+        put("last_status", old?.lastStatus ?: "untested")
+        put("last_error", old?.lastError)
+        put("last_tested_at", old?.lastTestedAt ?: 0L)
+        put("last_success_at", old?.lastSuccessAt ?: 0L)
+        put("qualification_version", old?.qualificationVersion ?: 0)
+        put("qualification_passed", if (old?.qualificationPassed == true) 1 else 0)
+        put("last_qualified_at", old?.lastQualifiedAt ?: 0L)
     }
 
     fun get(modelKey: String): ModelHealth? {
@@ -69,6 +109,9 @@ class ModelHealthDb(context: Context) : SQLiteOpenHelper(context, "llm_council_h
         lastStatus = getString(getColumnIndexOrThrow("last_status")),
         lastError = getString(getColumnIndexOrThrow("last_error")),
         lastTestedAt = getLong(getColumnIndexOrThrow("last_tested_at")),
-        lastSuccessAt = getLong(getColumnIndexOrThrow("last_success_at"))
+        lastSuccessAt = getLong(getColumnIndexOrThrow("last_success_at")),
+        qualificationVersion = getInt(getColumnIndexOrThrow("qualification_version")),
+        qualificationPassed = getInt(getColumnIndexOrThrow("qualification_passed")) != 0,
+        lastQualifiedAt = getLong(getColumnIndexOrThrow("last_qualified_at"))
     )
 }
