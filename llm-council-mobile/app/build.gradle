@@ -9,9 +9,9 @@ android {
     defaultConfig {
         applicationId 'com.llmcouncil.mobile'
         minSdk 26
-        targetSdk 35
+        targetSdk 28
         versionCode 3
-        versionName '1.2'
+        versionName '1.2-install-fix'
     }
 
     buildTypes {
