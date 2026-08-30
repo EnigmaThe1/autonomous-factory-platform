@@ -267,7 +267,7 @@ Do not return only JSON, a tool call, nil, null, or a single word."""
                 val old = byId[model.id]
                 val recentlyFailedCurrentProtocol = old != null && old.qualificationVersion == QUALIFICATION_PROTOCOL_VERSION &&
                     !old.qualificationPassed && old.lastQualifiedAt >= freshCutoff
-                if (recentlyFailedCurrentProtocol && old.consecutiveFailures >= 2) continue
+                if (recentlyFailedCurrentProtocol && (old?.consecutiveFailures ?: 0) >= 2) continue
                 _verificationStatus.value = "Qualifying ${model.name}… ${verified.size}/4 confirmed"
                 if (qualifyModel(model)) verified += model
             }
