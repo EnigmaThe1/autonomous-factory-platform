@@ -43,12 +43,15 @@ class OpenRouterClient(private val settings: SecureSettings) {
                     val o = data.optJSONObject(i) ?: continue
                     val id = o.optString("id").trim(); if (id.isEmpty()) continue
                     val pricing = o.optJSONObject("pricing")
+                    val architecture = o.optJSONObject("architecture")
                     add(OpenRouterModel(
                         id = id,
                         name = o.optString("name", id).ifBlank { id },
                         contextLength = o.optInt("context_length", 0),
-                        promptPricePerToken = pricing?.optString("prompt")?.toDoubleOrNull() ?: 0.0,
-                        completionPricePerToken = pricing?.optString("completion")?.toDoubleOrNull() ?: 0.0,
+                        promptPricePerToken = pricing?.optString("prompt")?.takeIf { it.isNotBlank() }?.toDoubleOrNull(),
+                        completionPricePerToken = pricing?.optString("completion")?.takeIf { it.isNotBlank() }?.toDoubleOrNull(),
+                        inputModalities = architecture?.optJSONArray("input_modalities").toStringSet(),
+                        outputModalities = architecture?.optJSONArray("output_modalities").toStringSet(),
                         description = o.optString("description", "")
                     ))
                 }
@@ -56,9 +59,10 @@ class OpenRouterClient(private val settings: SecureSettings) {
         }
     }
 
-    suspend fun chat(model: String, prompt: String): String = withContext(Dispatchers.IO) {
+    suspend fun chat(model: String, prompt: String, maxTokens: Int = 2048): String = withContext(Dispatchers.IO) {
         val payload = JSONObject()
             .put("model", model)
+            .put("max_tokens", maxTokens.coerceIn(256, 8192))
             .put("messages", JSONArray().put(JSONObject().put("role", "user").put("content", prompt)))
         val request = Request.Builder()
             .url("https://openrouter.ai/api/v1/chat/completions")
@@ -73,6 +77,13 @@ class OpenRouterClient(private val settings: SecureSettings) {
             if (!response.isSuccessful) throw failure(response.code, body)
             val root = JSONObject(body)
             root.getJSONArray("choices").getJSONObject(0).getJSONObject("message").optString("content", "")
+        }
+    }
+
+    private fun JSONArray?.toStringSet(): Set<String> {
+        if (this == null) return emptySet()
+        return buildSet {
+            for (i in 0 until length()) optString(i).trim().lowercase().takeIf { it.isNotEmpty() }?.let(::add)
         }
     }
 
