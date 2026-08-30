@@ -113,10 +113,25 @@ public class MainActivity extends Activity {
 
     private void showModelSettings(){
         String[] current=councilModels();
-        String msg="Council members ("+current.length+"):\n"+String.join("\n",current)+"\n\nChairman:\n"+chairmanModel();
-        new AlertDialog.Builder(this).setTitle("AI models").setMessage(msg).setItems(new String[]{"Select council models","Select chairman","Reset to upstream defaults"},(d,w)->{
-            if(w==0)loadModelsAndChoose(true); else if(w==1)loadModelsAndChoose(false); else {prefs.edit().remove("council_models").remove("chairman_model").apply();Toast.makeText(this,"Upstream model defaults restored.",Toast.LENGTH_SHORT).show();}
+        String chairman=chairmanModel();
+        String[] options={
+                "Council models ("+current.length+" selected)",
+                "Chairman model\n"+chairman,
+                "View current selection",
+                "Reset to upstream defaults"
+        };
+        new AlertDialog.Builder(this).setTitle("AI models").setItems(options,(d,w)->{
+            if(w==0) loadModelsAndChoose(true);
+            else if(w==1) loadModelsAndChoose(false);
+            else if(w==2) showCurrentSelection();
+            else {prefs.edit().remove("council_models").remove("chairman_model").apply();Toast.makeText(this,"Upstream model defaults restored.",Toast.LENGTH_SHORT).show();}
         }).setNegativeButton("Close",null).show();
+    }
+
+    private void showCurrentSelection(){
+        String[] current=councilModels();
+        String msg="Council members ("+current.length+"):\n"+String.join("\n",current)+"\n\nChairman:\n"+chairmanModel();
+        new AlertDialog.Builder(this).setTitle("Current AI models").setMessage(msg).setPositiveButton("Close",null).show();
     }
 
     private void loadModelsAndChoose(boolean multi){
@@ -142,13 +157,13 @@ public class MainActivity extends Activity {
 
     private void chooseCouncilModels(List<ModelInfo> models){
         Set<String> selected=new HashSet<>(Arrays.asList(councilModels()));String[] labels=new String[models.size()];boolean[] checked=new boolean[models.size()];for(int i=0;i<models.size();i++){labels[i]=models.get(i).label();checked[i]=selected.contains(models.get(i).id);}
-        AlertDialog d=new AlertDialog.Builder(this).setTitle("Council models").setMultiChoiceItems(labels,checked,(x,which,isChecked)->checked[which]=isChecked).setPositiveButton("Save",null).setNeutralButton("Select none",null).setNegativeButton("Cancel",null).create();
+        AlertDialog d=new AlertDialog.Builder(this).setTitle("Council models · tap to select").setMultiChoiceItems(labels,checked,(x,which,isChecked)->checked[which]=isChecked).setPositiveButton("Save",null).setNeutralButton("Select none",null).setNegativeButton("Cancel",null).create();
         d.setOnShowListener(x->{d.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v->{List<String> ids=new ArrayList<>();for(int i=0;i<checked.length;i++)if(checked[i])ids.add(models.get(i).id);if(ids.size()<2){Toast.makeText(this,"Select at least two council models.",Toast.LENGTH_SHORT).show();return;}saveCouncilModels(ids);Toast.makeText(this,ids.size()+" council models saved.",Toast.LENGTH_SHORT).show();d.dismiss();});d.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener(v->{for(int i=0;i<checked.length;i++){checked[i]=false;d.getListView().setItemChecked(i,false);}});});d.show();
     }
 
     private void chooseChairman(List<ModelInfo> models){
         String[] labels=new String[models.size()];int current=-1;String cm=chairmanModel();for(int i=0;i<models.size();i++){labels[i]=models.get(i).label();if(models.get(i).id.equals(cm))current=i;}final int[] chosen={current};
-        new AlertDialog.Builder(this).setTitle("Chairman model").setSingleChoiceItems(labels,current,(d,w)->chosen[0]=w).setPositiveButton("Save",(d,w)->{if(chosen[0]>=0){saveChairman(models.get(chosen[0]).id);Toast.makeText(this,"Chairman saved.",Toast.LENGTH_SHORT).show();}}).setNegativeButton("Cancel",null).show();
+        new AlertDialog.Builder(this).setTitle("Chairman model · tap one").setSingleChoiceItems(labels,current,(d,w)->chosen[0]=w).setPositiveButton("Save",(d,w)->{if(chosen[0]>=0){saveChairman(models.get(chosen[0]).id);Toast.makeText(this,"Chairman saved.",Toast.LENGTH_SHORT).show();}}).setNegativeButton("Cancel",null).show();
     }
 
     private void setBusy(boolean busy){askButton.setEnabled(!busy);historyButton.setEnabled(!busy);settingsButton.setEnabled(!busy);progress.setVisibility(busy?View.VISIBLE:View.GONE);}
