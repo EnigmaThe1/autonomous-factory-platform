@@ -1,0 +1,31 @@
+name: Temporary LLM Council Android Model Settings Build
+
+on:
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'llm-council-mobile/**'
+      - '.github/workflows/tmp-llm-council-model-settings.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+      - name: Build debug APK
+        run: gradle -p llm-council-mobile --no-daemon assembleDebug
+      - name: Verify APK
+        run: test -s llm-council-mobile/app/build/outputs/apk/debug/app-debug.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: LLM-Council-Mobile-v2-APK
+          path: llm-council-mobile/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 7
