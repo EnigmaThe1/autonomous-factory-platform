@@ -194,6 +194,37 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
         _selectionVersion.value++
     }
 
+    private fun qualificationUsable(text: String): Boolean {
+        val clean = text.trim()
+        if (clean.length < 100) return false
+        val lower = clean.lowercase()
+        if (lower in setOf("null", "nil", "none", "n/a", "ok")) return false
+        if (!lower.contains("council-probe-27")) return false
+        if (!lower.contains("7")) return false
+        if (!lower.contains("alpha") || !lower.contains("beta")) return false
+        val alphaChars = clean.count { it.isLetter() }
+        return alphaChars >= 50 && alphaChars.toDouble() / clean.length.coerceAtLeast(1) > 0.18
+    }
+
+    private suspend fun qualifyModel(model: OpenRouterModel): Boolean {
+        val prompt = """Council compatibility probe. This is not a knowledge test. Return a substantive plain-text response that proves normal text generation and instruction following.
+Include all of the following:
+1. The exact marker COUNCIL-PROBE-27.
+2. State that 3 + 4 = 7.
+3. Compare the words alpha and beta in one complete sentence.
+4. Add one complete sentence explaining why an empty response would be unusable for a review council.
+Do not return only JSON, a tool call, nil, null, or a single word."""
+        return try {
+            val answer = client.chat(model.id, prompt, 160)
+            val ok = qualificationUsable(answer)
+            withContext(Dispatchers.IO) { healthDb.record(model.id, ok, if (ok) null else "Qualification returned empty/malformed/noncompliant text") }
+            ok
+        } catch (e: Exception) {
+            withContext(Dispatchers.IO) { healthDb.record(model.id, false, "Qualification: ${e.message ?: e}") }
+            false
+        }
+    }
+
     private suspend fun resolveFreePreset(probeIfNeeded: Boolean) {
         if (_models.value.isEmpty()) {
             try { _models.value = client.models() }
@@ -207,7 +238,9 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
         val health = withContext(Dispatchers.IO) { healthDb.list() }
         val byId = health.associateBy { it.modelKey }
         val freshCutoff = System.currentTimeMillis() - 7L * 24 * 60 * 60 * 1000
-        val verified = candidates.filter { byId[it.id]?.let { h -> h.verifiedWorking && h.lastSuccessAt >= freshCutoff } == true }.toMutableList()
+        val verified = candidates.filter {
+            byId[it.id]?.let { h -> h.verifiedWorking && h.lastSuccessAt >= freshCutoff && h.consecutiveFailures == 0 } == true
+        }.toMutableList()
 
         if (verified.size < 4 && probeIfNeeded) {
             val ranked = candidates.sortedWith(
@@ -219,30 +252,22 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
                 if (model in verified || verified.size >= 4) continue
                 val old = byId[model.id]
                 if (old != null && old.consecutiveFailures >= 2 && old.lastTestedAt >= freshCutoff) continue
-                _verificationStatus.value = "Testing ${model.name}… ${verified.size}/4 confirmed"
-                val ok = try { client.chat(model.id, "Reply with exactly: OK", 16).isNotBlank() }
-                catch (e: Exception) {
-                    withContext(Dispatchers.IO) { healthDb.record(model.id, false, e.message ?: e.toString()) }
-                    false
-                }
-                if (ok) {
-                    withContext(Dispatchers.IO) { healthDb.record(model.id, true) }
-                    verified += model
-                }
+                _verificationStatus.value = "Qualifying ${model.name}… ${verified.size}/4 confirmed"
+                if (qualifyModel(model)) verified += model
             }
         }
 
         val latest = withContext(Dispatchers.IO) { healthDb.list() }
         _health.value = latest
-        val workingIds = latest.filter { it.verifiedWorking }.map { it.modelKey }.toSet()
+        val workingIds = latest.filter { it.verifiedWorking && it.consecutiveFailures == 0 }.map { it.modelKey }.toSet()
         val chosen = diverseTop(candidates.filter { it.id in workingIds }, 4) { ln(1.0 + it.contextLength.coerceAtLeast(1).toDouble()) }
         if (chosen.size < 2) {
-            _modelsError.value = "Free verification found fewer than two working models. Open Model Learning Register to inspect failures and re-test later."
-            _verificationStatus.value = "Free verification finished: ${chosen.size} working model(s)"
+            _modelsError.value = "Free qualification found fewer than two council-usable models. Open Model Learning Register to inspect failures and re-test later."
+            _verificationStatus.value = "Free qualification finished: ${chosen.size} council-usable model(s)"
             return
         }
         applyChosenPreset("Free", chosen)
-        _verificationStatus.value = "Free verification complete: ${chosen.size} verified working models selected"
+        _verificationStatus.value = "Free qualification complete: ${chosen.size} empirically usable models selected"
     }
 
     fun verifyFreeModels() { settings.setActivePreset("Free"); viewModelScope.launch { resolveFreePreset(true) } }
