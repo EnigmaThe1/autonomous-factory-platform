@@ -104,9 +104,11 @@ private fun RepoAuditScreen(vm: RepoAuditViewModel, onChooseFolder: () -> Unit, 
                     Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text("Export workspace", fontWeight = FontWeight.Bold)
                         Text(vm.exportTree()?.toString()?.let { "Folder access configured" } ?: "No folder selected", style = MaterialTheme.typography.bodySmall)
+                        Text("Choose any Android document folder. The app creates project/date subfolders and keeps individual reviews, peer reviews, rankings, coverage evidence and final reports separated.", style = MaterialTheme.typography.labelSmall)
+                        OutlinedButton(onClick = onChooseFolder) { Icon(Icons.Default.CreateNewFolder, null); Spacer(Modifier.width(4.dp)); Text("Choose / create folder") }
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            OutlinedButton(onClick = onChooseFolder) { Icon(Icons.Default.CreateNewFolder, null); Spacer(Modifier.width(4.dp)); Text("Choose / create folder") }
                             Button(onClick = vm::exportCurrent, enabled = run.repoFullName.isNotBlank()) { Icon(Icons.Default.FileDownload, null); Spacer(Modifier.width(4.dp)); Text("Export audit") }
+                            OutlinedButton(onClick = vm::exportLastCouncil) { Icon(Icons.Default.Download, null); Spacer(Modifier.width(4.dp)); Text("Export last council") }
                         }
                     }
                 }
