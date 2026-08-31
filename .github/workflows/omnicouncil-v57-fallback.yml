@@ -1,0 +1,56 @@
+name: OmniCouncil v5.7 Fallback Build
+
+on:
+  push:
+    branches:
+      - tmp-omnicouncil-build
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout host repository
+        uses: actions/checkout@v4
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Set up Gradle 8.9
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+      - name: Prepare exact v5.7 payload
+        run: |
+          git clone --depth 1 --branch build/omnicouncil-v5.7 https://github.com/EnigmaThe1/Temp.git /tmp/temp
+          cp -a llm-council-mobile/. /tmp/omnicouncil/
+          cp /tmp/temp/payload/app-build.gradle /tmp/omnicouncil/app/build.gradle
+          cp /tmp/temp/payload/AndroidManifest.xml /tmp/omnicouncil/app/src/main/AndroidManifest.xml
+          cp /tmp/temp/payload/MainActivity.kt /tmp/omnicouncil/app/src/main/java/com/llmcouncil/mobile/MainActivity.kt
+          cp /tmp/temp/payload/AppUi.kt /tmp/omnicouncil/app/src/main/java/com/llmcouncil/mobile/ui/AppUi.kt
+          cp /tmp/temp/payload/AuditModelAllocationActivity.kt /tmp/omnicouncil/app/src/main/java/com/llmcouncil/mobile/AuditModelAllocationActivity.kt
+          cp /tmp/temp/payload/AuditModelAllocationViewModel.kt /tmp/omnicouncil/app/src/main/java/com/llmcouncil/mobile/AuditModelAllocationViewModel.kt
+          cp /tmp/temp/payload/SecureSettings.kt /tmp/omnicouncil/app/src/main/java/com/llmcouncil/mobile/data/SecureSettings.kt
+          cp /tmp/temp/payload/GitHubClient.kt /tmp/omnicouncil/app/src/main/java/com/llmcouncil/mobile/data/GitHubClient.kt
+          cp /tmp/temp/payload/OpenRouterClient.kt /tmp/omnicouncil/app/src/main/java/com/llmcouncil/mobile/data/OpenRouterClient.kt
+          cp /tmp/temp/payload/AuditModels.kt /tmp/omnicouncil/app/src/main/java/com/llmcouncil/mobile/model/AuditModels.kt
+          cp /tmp/temp/payload/RepoAuditViewModel.kt /tmp/omnicouncil/app/src/main/java/com/llmcouncil/mobile/RepoAuditViewModel.kt
+          cp /tmp/temp/payload/RepoAuditActivity.kt /tmp/omnicouncil/app/src/main/java/com/llmcouncil/mobile/RepoAuditActivity.kt
+          cp /tmp/temp/payload/RepoAuditService.kt /tmp/omnicouncil/app/src/main/java/com/llmcouncil/mobile/RepoAuditService.kt
+          cp /tmp/temp/payload/AuditScopeRulesStore.kt /tmp/omnicouncil/app/src/main/java/com/llmcouncil/mobile/data/AuditScopeRulesStore.kt
+          cp /tmp/temp/payload/ScopeManifestStore.kt /tmp/omnicouncil/app/src/main/java/com/llmcouncil/mobile/data/ScopeManifestStore.kt
+          cp /tmp/temp/payload/ScopeValidationEngine.kt /tmp/omnicouncil/app/src/main/java/com/llmcouncil/mobile/domain/ScopeValidationEngine.kt
+          cp /tmp/temp/payload/RepoAuditEngine.kt /tmp/omnicouncil/app/src/main/java/com/llmcouncil/mobile/domain/RepoAuditEngine.kt
+      - name: Build unsigned release APK
+        working-directory: /tmp/omnicouncil
+        run: gradle --no-daemon :app:assembleRelease
+      - name: Upload unsigned APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: OmniCouncil-v5.7-unsigned
+          path: /tmp/omnicouncil/app/build/outputs/apk/release/app-release-unsigned.apk
+          if-no-files-found: error
