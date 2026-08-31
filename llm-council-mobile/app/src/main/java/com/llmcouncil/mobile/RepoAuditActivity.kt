@@ -29,9 +29,7 @@ class RepoAuditActivity : ComponentActivity() {
     private lateinit var vm: RepoAuditViewModel
     private val folderPicker = registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
         if (uri != null) {
-            try {
-                contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
-            } catch (_: Exception) { }
+            try { contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION) } catch (_: Exception) { }
             vm.setExportTree(uri)
         }
     }
@@ -62,25 +60,19 @@ private fun RepoAuditScreen(vm: RepoAuditViewModel, onChooseFolder: () -> Unit, 
 
     LaunchedEffect(Unit) { if (vm.githubConfigured()) vm.loadRepos() }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Column { Text("Repository Audit", fontWeight = FontWeight.Bold); Text("Evidence-driven council · v${BuildConfig.VERSION_NAME}", style = MaterialTheme.typography.labelSmall) } },
-                navigationIcon = { IconButton(onClick = onBackToCouncil) { Icon(Icons.Default.ArrowBack, "Back") } },
-                actions = { IconButton(onClick = { showToken = !showToken }) { Icon(Icons.Default.Key, "GitHub credential") } }
-            )
-        }
-    ) { padding ->
-        LazyColumn(
-            Modifier.fillMaxSize().padding(padding),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
+    Scaffold(topBar = {
+        TopAppBar(
+            title = { Column { Text("Repository Audit", fontWeight = FontWeight.Bold); Text("OmniCouncil · v${BuildConfig.VERSION_NAME}", style = MaterialTheme.typography.labelSmall) } },
+            navigationIcon = { IconButton(onClick = onBackToCouncil) { Icon(Icons.Default.ArrowBack, "Back") } },
+            actions = { IconButton(onClick = { showToken = !showToken }) { Icon(Icons.Default.Key, "GitHub credential") } }
+        )
+    }) { padding ->
+        LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             item {
                 ElevatedCard(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(14.dp)) {
                         Text("Exhaustive audit contract", fontWeight = FontWeight.Bold)
-                        Text("The app freezes a GitHub commit, inventories every eligible file, and does not admit a model to peer review unless its software-enforced coverage reaches 100%.", style = MaterialTheme.typography.bodySmall)
+                        Text("OmniCouncil freezes a GitHub commit, inventories every eligible file, and does not admit a model to peer review unless its software-enforced coverage reaches 100%.", style = MaterialTheme.typography.bodySmall)
                     }
                 }
             }
@@ -104,7 +96,7 @@ private fun RepoAuditScreen(vm: RepoAuditViewModel, onChooseFolder: () -> Unit, 
                     Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text("Export workspace", fontWeight = FontWeight.Bold)
                         Text(vm.exportTree()?.toString()?.let { "Folder access configured" } ?: "No folder selected", style = MaterialTheme.typography.bodySmall)
-                        Text("Choose any Android document folder. The app creates project/date subfolders and keeps individual reviews, peer reviews, rankings, coverage evidence and final reports separated.", style = MaterialTheme.typography.labelSmall)
+                        Text("Choose any Android document folder. OmniCouncil creates project/date subfolders and keeps individual reviews, peer reviews, rankings, coverage evidence and final reports separated.", style = MaterialTheme.typography.labelSmall)
                         OutlinedButton(onClick = onChooseFolder) { Icon(Icons.Default.CreateNewFolder, null); Spacer(Modifier.width(4.dp)); Text("Choose / create folder") }
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Button(onClick = vm::exportCurrent, enabled = run.repoFullName.isNotBlank()) { Icon(Icons.Default.FileDownload, null); Spacer(Modifier.width(4.dp)); Text("Export audit") }
@@ -116,17 +108,13 @@ private fun RepoAuditScreen(vm: RepoAuditViewModel, onChooseFolder: () -> Unit, 
 
             if (loading) item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
             message?.let { msg -> item { AssistChip(onClick = vm::clearMessage, leadingIcon = { Icon(Icons.Default.Info, null) }, label = { Text(msg, maxLines = 3, overflow = TextOverflow.Ellipsis) }) } }
-
             if (run.repoFullName.isNotBlank()) item { AuditProgressCard(run, vm) }
-
             if (run.modelAudits.isNotEmpty()) item { IndividualAuditCard(run) }
             if (run.peerReviews.isNotEmpty()) item { PeerAuditCard(run) }
             if (run.finalReport.isNotBlank()) item { FinalAuditCard(run) }
 
             if (vm.githubConfigured() && run.stage !in listOf(RepoAuditStage.SNAPSHOT, RepoAuditStage.INDEPENDENT, RepoAuditStage.PEER_REVIEW, RepoAuditStage.VERIFY, RepoAuditStage.CHAIRMAN)) {
-                item {
-                    OutlinedTextField(search, { search = it }, Modifier.fillMaxWidth(), label = { Text("Search repositories") }, leadingIcon = { Icon(Icons.Default.Search, null) }, singleLine = true)
-                }
+                item { OutlinedTextField(search, { search = it }, Modifier.fillMaxWidth(), label = { Text("Search repositories") }, leadingIcon = { Icon(Icons.Default.Search, null) }, singleLine = true) }
                 item { Text("Repositories", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }
                 val filtered = repos.filter { search.isBlank() || it.fullName.contains(search, true) || it.description.contains(search, true) }
                 items(filtered, key = { it.fullName }) { repo ->
@@ -135,19 +123,14 @@ private fun RepoAuditScreen(vm: RepoAuditViewModel, onChooseFolder: () -> Unit, 
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(if (repo.privateRepo) Icons.Default.Lock else Icons.Default.Public, null)
                                 Spacer(Modifier.width(8.dp))
-                                Column(Modifier.weight(1f)) {
-                                    Text(repo.fullName, fontWeight = FontWeight.SemiBold)
-                                    Text("default: ${repo.defaultBranch}", style = MaterialTheme.typography.labelSmall)
-                                }
+                                Column(Modifier.weight(1f)) { Text(repo.fullName, fontWeight = FontWeight.SemiBold); Text("default: ${repo.defaultBranch}", style = MaterialTheme.typography.labelSmall) }
                                 Button(onClick = { selected = repo; ref = repo.defaultBranch }) { Text("Select") }
                             }
                             if (selected?.fullName == repo.fullName) {
                                 Spacer(Modifier.height(8.dp))
                                 OutlinedTextField(ref, { ref = it }, Modifier.fillMaxWidth(), label = { Text("Branch / tag / commit") }, singleLine = true)
                                 Spacer(Modifier.height(8.dp))
-                                Button(onClick = { vm.start(repo, ref) }, modifier = Modifier.fillMaxWidth()) {
-                                    Icon(Icons.Default.FactCheck, null); Spacer(Modifier.width(6.dp)); Text("Start exhaustive council audit")
-                                }
+                                Button(onClick = { vm.start(repo, ref) }, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Default.FactCheck, null); Spacer(Modifier.width(6.dp)); Text("Start exhaustive council audit") }
                             }
                         }
                     }
@@ -170,7 +153,7 @@ private fun AuditProgressCard(run: RepoAuditRun, vm: RepoAuditViewModel) {
                 val pct = if (a.requiredCount == 0) 0 else a.coveredCount * 100 / a.requiredCount
                 Text("${a.model}: ${a.coveredCount}/${a.requiredCount} ($pct%) ${if (a.complete) "✓" else ""}", style = MaterialTheme.typography.labelSmall)
             }
-            if (run.errors.isNotEmpty()) run.errors.forEach { (k,v) -> Text("$k: $v", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+            if (run.errors.isNotEmpty()) run.errors.forEach { (k, v) -> Text("$k: $v", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (running) OutlinedButton(onClick = vm::cancel) { Icon(Icons.Default.Stop, null); Spacer(Modifier.width(4.dp)); Text("Cancel") }
                 if (!running) TextButton(onClick = vm::clear) { Text("Clear run") }
@@ -208,9 +191,7 @@ private fun PeerAuditCard(run: RepoAuditRun) {
             Text("Peer review & ranking", fontWeight = FontWeight.Bold)
             run.aggregate.forEachIndexed { i, r -> Text("${i + 1}. ${r.model} · avg ${r.averageRank} · ${r.votes} votes", style = MaterialTheme.typography.bodySmall) }
             TextButton(onClick = { expanded = !expanded }) { Text(if (expanded) "Hide peer reviews" else "Show peer reviews") }
-            if (expanded) run.peerReviews.forEach { r ->
-                HorizontalDivider(Modifier.padding(vertical = 6.dp)); Text(r.model, fontWeight = FontWeight.SemiBold); Text(r.error ?: r.text, style = MaterialTheme.typography.bodySmall)
-            }
+            if (expanded) run.peerReviews.forEach { r -> HorizontalDivider(Modifier.padding(vertical = 6.dp)); Text(r.model, fontWeight = FontWeight.SemiBold); Text(r.error ?: r.text, style = MaterialTheme.typography.bodySmall) }
         }
     }
 }

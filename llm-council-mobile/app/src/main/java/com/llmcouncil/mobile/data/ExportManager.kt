@@ -3,8 +3,7 @@ package com.llmcouncil.mobile.data
 import android.content.Context
 import android.net.Uri
 import androidx.documentfile.provider.DocumentFile
-import com.llmcouncil.mobile.model.CouncilRun
-import com.llmcouncil.mobile.model.RepoAuditRun
+import com.llmcouncil.mobile.model.*
 import org.json.JSONArray
 import org.json.JSONObject
 import java.text.SimpleDateFormat
@@ -14,20 +13,20 @@ import java.util.Locale
 object ExportManager {
     fun exportRepoAudit(context: Context, treeUri: Uri, run: RepoAuditRun): String {
         val root = DocumentFile.fromTreeUri(context, treeUri) ?: error("Selected folder is no longer accessible")
-        val councilRoot = dir(root, "LLM-Council")
-        val project = dir(councilRoot, safe(run.repoFullName.replace('/', '_')))
+        val omni = dir(root, "OmniCouncil")
+        val project = dir(omni, safe(run.repoFullName.replace('/', '_')))
         val stamp = SimpleDateFormat("yyyy-MM-dd_HHmmss", Locale.UK).format(Date(run.startedAt))
-        val workspaceName = "${stamp}_Repository-Audit_${run.commitSha.take(8).ifBlank { "unknown" }}"
-        val workspace = dir(project, workspaceName)
-        val metadata = dir(workspace, "00_Audit-Metadata")
-        val individual = dir(workspace, "01_Individual-Reviews")
-        val peer = dir(workspace, "02_Peer-Reviews")
-        val rankings = dir(workspace, "03_Rankings")
-        val final = dir(workspace, "04_Final-Report")
-        val evidence = dir(workspace, "05_Evidence")
+        val name = "${stamp}_Repository-Audit_${run.commitSha.take(8).ifBlank { "unknown" }}"
+        val ws = dir(project, name)
+        val metadata = dir(ws, "00_Audit-Metadata")
+        val individual = dir(ws, "01_Individual-Reviews")
+        val peer = dir(ws, "02_Peer-Reviews")
+        val rankings = dir(ws, "03_Rankings")
+        val final = dir(ws, "04_Final-Report")
+        val evidence = dir(ws, "05_Evidence")
 
         val summary = JSONObject()
-            .put("application", "LLM Council Mobile")
+            .put("application", "OmniCouncil")
             .put("audit_type", "Exhaustive Repository Audit")
             .put("repository", run.repoFullName)
             .put("ref", run.ref)
@@ -42,72 +41,80 @@ object ExportManager {
             .put("errors", JSONObject(run.errors))
         write(context, metadata, "audit-summary.json", "application/json", summary.toString(2))
 
-        run.modelAudits.forEachIndexed { index, audit ->
-            val name = "%02d_%s.md".format(index + 1, safe(audit.model))
-            val body = buildString {
-                append("# Independent Repository Audit\n\n")
-                append("- Model: `${audit.model}`\n")
-                append("- Coverage: ${audit.coveredCount}/${audit.requiredCount}\n")
-                append("- Complete: ${audit.complete}\n")
-                audit.error?.let { append("- Error: $it\n") }
-                append("\n## Report\n\n").append(audit.report.ifBlank { "No final report produced." })
-            }
-            write(context, individual, name, "text/markdown", body)
-            val batchBody = buildString {
-                append("# Batch Evidence — ${audit.model}\n\n")
-                audit.batchReports.forEachIndexed { bi, report -> append("## Batch ${bi + 1}\n\n$report\n\n") }
-            }
-            write(context, evidence, "%02d_%s_batch-evidence.md".format(index + 1, safe(audit.model)), "text/markdown", batchBody)
+        run.modelAudits.forEachIndexed { i, a ->
+            write(
+                context,
+                individual,
+                "%02d_%s.md".format(i + 1, safe(a.model)),
+                "text/markdown",
+                "# Independent Repository Audit\n\n- Model: `${a.model}`\n- Coverage: ${a.coveredCount}/${a.requiredCount}\n- Complete: ${a.complete}\n${a.error?.let { "- Error: $it\n" } ?: ""}\n## Report\n\n${a.report.ifBlank { "No final report produced." }}"
+            )
+            write(
+                context,
+                evidence,
+                "%02d_%s_batch-evidence.md".format(i + 1, safe(a.model)),
+                "text/markdown",
+                buildString {
+                    append("# Batch Evidence — ${a.model}\n\n")
+                    a.batchReports.forEachIndexed { bi, r -> append("## Batch ${bi + 1}\n\n$r\n\n") }
+                }
+            )
         }
 
-        run.peerReviews.forEachIndexed { index, review ->
-            val body = "# Peer Review\n\n- Model: `${review.model}`\n- Error: ${review.error ?: "None"}\n\n${review.text}"
-            write(context, peer, "%02d_%s_peer-review.md".format(index + 1, safe(review.model)), "text/markdown", body)
+        run.peerReviews.forEachIndexed { i, r ->
+            write(
+                context,
+                peer,
+                "%02d_%s_peer-review.md".format(i + 1, safe(r.model)),
+                "text/markdown",
+                "# Peer Review\n\n- Model: `${r.model}`\n- Error: ${r.error ?: "None"}\n\n${r.text}"
+            )
         }
 
-        val rankingCsv = buildString {
+        write(context, rankings, "aggregate-ranking.csv", "text/csv", buildString {
             append("rank,model,average_rank,votes\n")
             run.aggregate.forEachIndexed { i, r -> append("${i + 1},\"${r.model.replace("\"", "\"\"")}\",${r.averageRank},${r.votes}\n") }
-        }
-        write(context, rankings, "aggregate-ranking.csv", "text/csv", rankingCsv)
-        write(context, rankings, "aggregate-ranking.md", "text/markdown", buildString {
-            append("# Aggregate Ranking\n\n")
-            run.aggregate.forEachIndexed { i, r -> append("${i + 1}. `${r.model}` — avg ${r.averageRank}, ${r.votes} votes\n") }
         })
 
-        val coverageCsv = buildString {
+        write(context, evidence, "file-coverage.csv", "text/csv", buildString {
             append("model,path,covered,batch,error\n")
             run.modelAudits.flatMap { it.coverage }.forEach { c ->
-                fun q(s: String) = "\"${s.replace("\"", "\"\"")}\""
-                append("${q(c.model)},${q(c.path)},${c.covered},${c.batchIndex},${q(c.error ?: "")}\n")
+                append("${csv(c.model)},${csv(c.path)},${c.covered},${c.batchIndex},${csv(c.error ?: "")}\n")
             }
-        }
-        write(context, evidence, "file-coverage.csv", "text/csv", coverageCsv)
+        })
 
-        val finalBody = buildString {
-            append("# Final Council Repository Audit\n\n")
-            append("Repository: `${run.repoFullName}`  \nRef: `${run.ref}`  \nCommit: `${run.commitSha}`  \n")
-            append("Required files: ${run.requiredFiles}  \nExcluded files: ${run.excludedFiles}  \nChairman: `${run.chairmanModel}`\n\n")
-            append(run.finalReport.ifBlank { "No final report produced." })
+        write(context, evidence, "excluded-files.csv", "text/csv", buildString {
+            append("path,sha,size,category,reason\n")
+            run.excludedManifest.sortedBy { it.path }.forEach { f ->
+                append("${csv(f.path)},${csv(f.sha)},${f.size},${csv(f.category)},${csv(f.exclusionReason ?: "excluded")}\n")
+            }
+        })
+
+        if (run.verificationMemo.isNotBlank()) {
+            write(context, evidence, "adversarial-verification.md", "text/markdown", "# Adversarial Verification Memorandum\n\n${run.verificationMemo}")
         }
-        write(context, final, "Final-Council-Review.md", "text/markdown", finalBody)
-        write(context, final, "Final-Council-Review.txt", "text/plain", run.finalReport)
-        return "LLM-Council/${project.name}/$workspaceName"
+
+        write(
+            context,
+            final,
+            "Final-OmniCouncil-Review.md",
+            "text/markdown",
+            "# Final OmniCouncil Repository Audit\n\nRepository: `${run.repoFullName}`  \nRef: `${run.ref}`  \nCommit: `${run.commitSha}`  \nRequired files: ${run.requiredFiles}  \nExcluded files: ${run.excludedFiles}  \nChairman: `${run.chairmanModel}`\n\n${run.finalReport.ifBlank { "No final report produced." }}"
+        )
+        return "OmniCouncil/${project.name}/$name"
     }
 
     fun exportCouncilRun(context: Context, treeUri: Uri, run: CouncilRun, projectName: String = "Council-Runs"): String {
         val root = DocumentFile.fromTreeUri(context, treeUri) ?: error("Selected folder is no longer accessible")
-        val councilRoot = dir(root, "LLM-Council")
-        val project = dir(councilRoot, safe(projectName))
-        val stamp = SimpleDateFormat("yyyy-MM-dd_HHmmss", Locale.UK).format(Date(run.startedAt))
-        val workspace = dir(project, "${stamp}_Council-Run")
-        val individual = dir(workspace, "01_Individual-Reviews")
-        val peer = dir(workspace, "02_Peer-Reviews")
-        val final = dir(workspace, "04_Final-Report")
+        val project = dir(dir(root, "OmniCouncil"), safe(projectName))
+        val ws = dir(project, "${SimpleDateFormat("yyyy-MM-dd_HHmmss", Locale.UK).format(Date(run.startedAt))}_Council-Run")
+        val individual = dir(ws, "01_Individual-Reviews")
+        val peer = dir(ws, "02_Peer-Reviews")
+        val final = dir(ws, "04_Final-Report")
         run.stage1.forEachIndexed { i, a -> write(context, individual, "%02d_%s.md".format(i + 1, safe(a.model)), "text/markdown", "# ${a.model}\n\n${a.error ?: a.text}") }
         run.stage2.forEachIndexed { i, r -> write(context, peer, "%02d_%s.md".format(i + 1, safe(r.model)), "text/markdown", "# ${r.model}\n\n${r.error ?: r.text}") }
-        run.chairman?.let { write(context, final, "Final-Council-Answer.md", "text/markdown", "# Final Council Answer\n\nChairman: `${it.model}`\n\n${it.error ?: it.text}") }
-        return "LLM-Council/${project.name}/${workspace.name}"
+        run.chairman?.let { write(context, final, "Final-OmniCouncil-Answer.md", "text/markdown", "# Final OmniCouncil Answer\n\nChairman: `${it.model}`\n\n${it.error ?: it.text}") }
+        return "OmniCouncil/${project.name}/${ws.name}"
     }
 
     private fun dir(parent: DocumentFile, name: String): DocumentFile =
@@ -120,5 +127,6 @@ object ExportManager {
             ?: error("Unable to write $name")
     }
 
+    private fun csv(value: String): String = "\"${value.replace("\"", "\"\"")}\""
     private fun safe(value: String): String = value.replace(Regex("[^A-Za-z0-9._-]+"), "_").trim('_').take(100).ifBlank { "item" }
 }

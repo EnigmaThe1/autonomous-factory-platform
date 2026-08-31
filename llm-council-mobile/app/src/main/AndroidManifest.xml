@@ -7,14 +7,14 @@
     <application
         android:allowBackup="false"
         android:fullBackupContent="false"
-        android:label="LLM Council"
+        android:label="OmniCouncil"
         android:supportsRtl="true"
         android:theme="@style/AppTheme"
         android:usesCleartextTraffic="false">
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:label="LLM Council">
+            android:label="OmniCouncil">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />

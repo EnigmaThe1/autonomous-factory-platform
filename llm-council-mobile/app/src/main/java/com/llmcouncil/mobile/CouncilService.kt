@@ -45,11 +45,7 @@ class CouncilService : Service() {
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
-
-    override fun onDestroy() {
-        scope.cancel()
-        super.onDestroy()
-    }
+    override fun onDestroy() { scope.cancel(); super.onDestroy() }
 
     private fun startRun(question: String) {
         startForeground(NOTIFICATION_ID, buildNotification("Preparing council…", ongoing = true))
@@ -59,9 +55,7 @@ class CouncilService : Service() {
             val healthDb = ModelHealthDb(this@CouncilService)
             val historyDb = HistoryDb(this@CouncilService)
             val engine = CouncilEngine(client, settings, healthDb)
-            val checkpoint = store.load()?.takeIf {
-                it.question == question && it.stage !in listOf(CouncilStage.COMPLETE, CouncilStage.CANCELLED)
-            }
+            val checkpoint = store.load()?.takeIf { it.question == question && it.stage !in listOf(CouncilStage.COMPLETE, CouncilStage.CANCELLED) }
             try {
                 val result = engine.run(question, checkpoint) { update ->
                     CouncilRuntime.update(update)
@@ -71,37 +65,20 @@ class CouncilService : Service() {
                 if (result.stage == CouncilStage.COMPLETE && result.chairman != null) {
                     val title = question.lineSequence().firstOrNull().orEmpty().take(48).ifBlank { "New conversation" }
                     historyDb.insert(title, question, result.chairman.text, result.chairman.model, settings.councilModels())
-                    finishForeground("Council finished · tap to view result", result, completed = true)
-                } else {
-                    finishForeground(statusText(result), result, completed = false)
-                }
+                    finishForeground("Council finished · tap to view result")
+                } else finishForeground(statusText(result))
             } catch (e: CancellationException) {
                 val cancelled = (store.load() ?: CouncilRun(question)).copy(stage = CouncilStage.CANCELLED, finishedAt = System.currentTimeMillis())
-                CouncilRuntime.update(cancelled)
-                store.save(cancelled)
-                finishForeground("Council run cancelled", cancelled, completed = false)
+                CouncilRuntime.update(cancelled); store.save(cancelled); finishForeground("Council run cancelled")
             } catch (e: Exception) {
                 val current = store.load() ?: CouncilRun(question)
-                val failed = current.copy(
-                    stage = CouncilStage.ERROR,
-                    errors = current.errors + ("Service" to (e.message ?: e.toString())),
-                    finishedAt = System.currentTimeMillis()
-                )
-                CouncilRuntime.update(failed)
-                store.save(failed)
-                finishForeground("Council stopped with an error", failed, completed = false)
-            } finally {
-                runJob = null
-                stopSelf()
-            }
+                val failed = current.copy(stage = CouncilStage.ERROR, errors = current.errors + ("Service" to (e.message ?: e.toString())), finishedAt = System.currentTimeMillis())
+                CouncilRuntime.update(failed); store.save(failed); finishForeground("Council stopped with an error")
+            } finally { runJob = null; stopSelf() }
         }
     }
 
-    private fun cancelCurrentRun() {
-        runJob?.cancel()
-        if (runJob == null) stopSelf()
-    }
-
+    private fun cancelCurrentRun() { runJob?.cancel(); if (runJob == null) stopSelf() }
     private fun statusText(run: CouncilRun): String = when (run.stage) {
         CouncilStage.STAGE1 -> "Stage 1 · collecting model responses"
         CouncilStage.STAGE2 -> "Stage 2 · peer review"
@@ -112,23 +89,20 @@ class CouncilService : Service() {
         else -> "Preparing council…"
     }
 
-    private fun finishForeground(text: String, run: CouncilRun, completed: Boolean) {
+    private fun finishForeground(text: String) {
         val notification = buildNotification(text, ongoing = false)
         if (Build.VERSION.SDK_INT >= 24) stopForeground(STOP_FOREGROUND_DETACH) else @Suppress("DEPRECATION") stopForeground(false)
         notificationManager.notify(NOTIFICATION_ID, notification)
     }
 
     private fun buildNotification(text: String, ongoing: Boolean): Notification {
-        val openIntent = Intent(this, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
-        }
+        val openIntent = Intent(this, MainActivity::class.java).apply { flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP }
         val openPending = PendingIntent.getActivity(this, 0, openIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         val cancelIntent = Intent(this, CouncilService::class.java).apply { action = ACTION_CANCEL }
         val cancelPending = PendingIntent.getService(this, 1, cancelIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
-
         val builder = NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.stat_notify_chat)
-            .setContentTitle("LLM Council")
+            .setContentTitle("OmniCouncil")
             .setContentText(text)
             .setStyle(NotificationCompat.BigTextStyle().bigText(text))
             .setContentIntent(openPending)
@@ -136,19 +110,16 @@ class CouncilService : Service() {
             .setOnlyAlertOnce(ongoing)
             .setCategory(NotificationCompat.CATEGORY_PROGRESS)
             .setPriority(NotificationCompat.PRIORITY_LOW)
-
         if (ongoing) builder.addAction(android.R.drawable.ic_menu_close_clear_cancel, "Cancel", cancelPending)
         return builder.build()
     }
 
     private fun createChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            notificationManager.createNotificationChannel(
-                NotificationChannel(CHANNEL_ID, "Council runs", NotificationManager.IMPORTANCE_LOW).apply {
-                    description = "Progress and completion notifications for active LLM Council runs"
-                    setShowBadge(false)
-                }
-            )
+            notificationManager.createNotificationChannel(NotificationChannel(CHANNEL_ID, "Council runs", NotificationManager.IMPORTANCE_LOW).apply {
+                description = "Progress and completion notifications for active OmniCouncil runs"
+                setShowBadge(false)
+            })
         }
     }
 }

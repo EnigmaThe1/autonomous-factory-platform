@@ -59,22 +59,44 @@ class RepoAuditService : Service() {
             val github = GitHubClient(settings)
             val ai = OpenRouterClient(settings)
             val engine = RepoAuditEngine(ai, settings, ModelHealthDb(this@RepoAuditService))
+            val checkpointBeforeSnapshot = RepoAuditRuntime.run.value.takeIf {
+                it.repoFullName == repoFullName && it.ref == ref && it.stage != RepoAuditStage.COMPLETE
+            }
+
             try {
-                var state = RepoAuditRun(repoFullName = repoFullName, ref = ref, stage = RepoAuditStage.SNAPSHOT)
+                var state = RepoAuditRun(
+                    repoFullName = repoFullName,
+                    ref = ref,
+                    stage = RepoAuditStage.SNAPSHOT,
+                    startedAt = checkpointBeforeSnapshot?.startedAt ?: System.currentTimeMillis()
+                )
                 RepoAuditRuntime.update(this@RepoAuditService, state)
+
                 val repo = GitHubRepo(repoFullName, ref, privateRepo = false, updatedAt = "")
                 val snapshot = github.snapshot(repo, ref) { current, total, path ->
                     val pct = if (total <= 0) 0 else (current * 100 / total)
                     notifyProgress("Snapshot $current/$total · ${path.takeLast(38)}", pct)
                 }
-                state = state.copy(commitSha = snapshot.commitSha, requiredFiles = snapshot.requiredFiles.size, excludedFiles = snapshot.excluded.size)
+
+                val resume = checkpointBeforeSnapshot?.takeIf { it.commitSha == snapshot.commitSha }
+                state = (resume ?: state).copy(
+                    repoFullName = repoFullName,
+                    ref = ref,
+                    commitSha = snapshot.commitSha,
+                    stage = RepoAuditStage.INDEPENDENT,
+                    requiredFiles = snapshot.requiredFiles.size,
+                    excludedFiles = snapshot.excluded.size,
+                    excludedManifest = snapshot.excluded,
+                    finishedAt = null
+                )
                 RepoAuditRuntime.update(this@RepoAuditService, state)
 
-                val result = engine.run(snapshot) { update ->
+                val result = engine.run(snapshot, resume) { update ->
                     RepoAuditRuntime.update(this@RepoAuditService, update)
                     notifyAudit(update)
                 }
                 RepoAuditRuntime.update(this@RepoAuditService, result)
+
                 val finalText = when (result.stage) {
                     RepoAuditStage.COMPLETE -> "Repository audit finished · tap to view"
                     RepoAuditStage.CANCELLED -> "Repository audit cancelled"
@@ -86,9 +108,10 @@ class RepoAuditService : Service() {
                 val cancelled = RepoAuditRuntime.run.value.copy(stage = RepoAuditStage.CANCELLED, finishedAt = System.currentTimeMillis())
                 RepoAuditRuntime.update(this@RepoAuditService, cancelled)
             } catch (e: Exception) {
-                val failed = RepoAuditRuntime.run.value.copy(
+                val current = RepoAuditRuntime.run.value
+                val failed = current.copy(
                     stage = RepoAuditStage.ERROR,
-                    errors = RepoAuditRuntime.run.value.errors + ("Repository audit" to (e.message ?: e.toString())),
+                    errors = current.errors + ("Repository audit" to (e.message ?: e.toString())),
                     finishedAt = System.currentTimeMillis()
                 )
                 RepoAuditRuntime.update(this@RepoAuditService, failed)
@@ -119,7 +142,10 @@ class RepoAuditService : Service() {
             else -> "Repository audit running"
         }
         val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        manager.notify(NOTIFICATION_ID, notification(text, indeterminate = run.stage !in listOf(RepoAuditStage.COMPLETE, RepoAuditStage.ERROR, RepoAuditStage.CANCELLED)))
+        manager.notify(
+            NOTIFICATION_ID,
+            notification(text, indeterminate = run.stage !in listOf(RepoAuditStage.COMPLETE, RepoAuditStage.ERROR, RepoAuditStage.CANCELLED))
+        )
     }
 
     private fun notifyProgress(text: String, pct: Int) {
@@ -134,7 +160,7 @@ class RepoAuditService : Service() {
         val cancel = PendingIntent.getService(this, 4406, cancelIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         val builder = NotificationCompat.Builder(this, CHANNEL)
             .setSmallIcon(android.R.drawable.stat_notify_sync)
-            .setContentTitle("LLM Council · Repository Audit")
+            .setContentTitle("OmniCouncil · Repository Audit")
             .setContentText(text)
             .setContentIntent(pending)
             .setOnlyAlertOnce(true)
@@ -151,9 +177,11 @@ class RepoAuditService : Service() {
 
     private fun createChannel() {
         val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        manager.createNotificationChannel(NotificationChannel(CHANNEL, "Repository audits", NotificationManager.IMPORTANCE_LOW).apply {
-            description = "Progress and completion for exhaustive LLM Council repository audits"
-        })
+        manager.createNotificationChannel(
+            NotificationChannel(CHANNEL, "Repository audits", NotificationManager.IMPORTANCE_LOW).apply {
+                description = "Progress and completion for exhaustive OmniCouncil repository audits"
+            }
+        )
     }
 
     override fun onDestroy() {

@@ -11,6 +11,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
+import java.util.ArrayDeque
 import java.util.concurrent.TimeUnit
 import java.util.zip.ZipInputStream
 
@@ -24,6 +25,7 @@ class GitHubClient(private val settings: SecureSettings) {
         .build()
 
     private data class TreeMeta(val path: String, val sha: String, val size: Long, val category: String)
+    private data class PendingTree(val prefix: String, val sha: String)
 
     private fun auth(request: Request.Builder): Request.Builder {
         val token = settings.getGitHubToken()
@@ -31,14 +33,18 @@ class GitHubClient(private val settings: SecureSettings) {
         return request
             .header("Accept", "application/vnd.github+json")
             .header("X-GitHub-Api-Version", "2022-11-28")
-            .header("User-Agent", "LLM-Council-Mobile")
+            .header("User-Agent", "OmniCouncil-Android")
     }
 
     suspend fun listRepos(): List<GitHubRepo> = withContext(Dispatchers.IO) {
         require(settings.getGitHubToken().isNotBlank()) { "GitHub token is not configured" }
         val out = mutableListOf<GitHubRepo>()
         for (page in 1..20) {
-            val request = auth(Request.Builder().url("https://api.github.com/user/repos?per_page=100&page=$page&sort=updated&affiliation=owner,collaborator,organization_member")).build()
+            val request = auth(
+                Request.Builder().url(
+                    "https://api.github.com/user/repos?per_page=100&page=$page&sort=updated&affiliation=owner,collaborator,organization_member"
+                )
+            ).build()
             val data = JSONArray(executeText(request))
             for (i in 0 until data.length()) {
                 val o = data.getJSONObject(i)
@@ -62,59 +68,54 @@ class GitHubClient(private val settings: SecureSettings) {
     ): RepoSnapshot = withContext(Dispatchers.IO) {
         require(settings.getGitHubToken().isNotBlank()) { "GitHub token is not configured" }
         val safeRepo = repo.fullName.split('/').joinToString("/") { encode(it) }
-        val commitReq = auth(Request.Builder().url("https://api.github.com/repos/$safeRepo/commits/${encode(ref)}")).build()
-        val commitSha = JSONObject(executeText(commitReq)).getString("sha")
 
-        // The recursive tree is the authoritative audit manifest. If GitHub truncates it,
-        // we refuse to call the audit exhaustive.
-        val treeReq = auth(Request.Builder().url("https://api.github.com/repos/$safeRepo/git/trees/$commitSha?recursive=1")).build()
-        val treeRoot = JSONObject(executeText(treeReq))
-        if (treeRoot.optBoolean("truncated", false)) {
-            throw IllegalStateException("GitHub returned a truncated recursive tree. Exhaustive audit aborted because 100% repository coverage cannot be proven.")
-        }
+        val commitRequest = auth(
+            Request.Builder().url("https://api.github.com/repos/$safeRepo/commits/${encode(ref)}")
+        ).build()
+        val commitRoot = JSONObject(executeText(commitRequest))
+        val commitSha = commitRoot.getString("sha")
+        val rootTreeSha = commitRoot.optJSONObject("commit")?.optJSONObject("tree")?.optString("sha").orEmpty()
+        if (rootTreeSha.isBlank()) throw IllegalStateException("GitHub commit response did not include the root tree SHA")
 
-        val requiredMeta = linkedMapOf<String, TreeMeta>()
+        val manifest = loadCompleteTreeManifest(safeRepo, rootTreeSha)
+        val required = linkedMapOf<String, TreeMeta>()
         val excluded = mutableListOf<RepoFile>()
-        val tree = treeRoot.optJSONArray("tree") ?: JSONArray()
-        for (i in 0 until tree.length()) {
-            val item = tree.optJSONObject(i) ?: continue
-            if (item.optString("type") != "blob") continue
-            val path = item.optString("path")
-            val sha = item.optString("sha")
-            val size = item.optLong("size", 0L)
-            val category = classify(path)
-            val reason = exclusionReason(path, size)
-            if (reason != null) excluded += RepoFile(path, sha, size, "", category, true, reason)
-            else requiredMeta[path] = TreeMeta(path, sha, size, category)
+        for (item in manifest) {
+            val path = item.path
+            val reason = exclusionReason(path, item.size)
+            if (reason != null) {
+                excluded += RepoFile(path, item.sha, item.size, "", item.category, true, reason)
+            } else {
+                required[path] = item
+            }
         }
 
-        // Fetch contents as one pinned archive instead of one API call per blob. This scales
-        // to large repos without burning the GitHub REST rate limit while the tree above still
-        // gives us the deterministic coverage denominator and per-file SHAs.
         val found = linkedMapOf<String, RepoFile>()
-        val archiveReq = auth(Request.Builder().url("https://api.github.com/repos/$safeRepo/zipball/$commitSha")).build()
-        http.newCall(archiveReq).execute().use { response ->
+        val archiveRequest = auth(
+            Request.Builder().url("https://api.github.com/repos/$safeRepo/zipball/$commitSha")
+        ).build()
+        http.newCall(archiveRequest).execute().use { response ->
             if (!response.isSuccessful) throw githubError(response.code, response.body?.string().orEmpty())
             val body = response.body ?: throw IllegalStateException("GitHub returned an empty repository archive")
             ZipInputStream(body.byteStream().buffered()).use { zip ->
                 var entry = zip.nextEntry
                 while (entry != null) {
                     if (!entry.isDirectory) {
-                        val rawName = entry.name
-                        val path = rawName.substringAfter('/', rawName)
-                        val meta = requiredMeta[path]
+                        val path = entry.name.substringAfter('/', entry.name)
+                        val meta = required[path]
                         if (meta != null) {
-                            onProgress(found.size + 1, requiredMeta.size, path)
+                            onProgress(found.size + 1, required.size, path)
                             val bytes = zip.readBytes()
-                            if (bytes.size > 1_000_000) {
-                                excluded += RepoFile(path, meta.sha, meta.size, "", meta.category, true, "archive entry exceeds 1 MB audit ingestion limit")
-                                requiredMeta.remove(path)
-                            } else if (bytes.any { it.toInt() == 0 }) {
-                                excluded += RepoFile(path, meta.sha, meta.size, "", meta.category, true, "binary content")
-                                requiredMeta.remove(path)
-                            } else {
-                                val text = String(bytes, StandardCharsets.UTF_8)
-                                found[path] = RepoFile(path, meta.sha, meta.size, text, meta.category)
+                            when {
+                                bytes.size > 1_000_000 -> {
+                                    excluded += RepoFile(path, meta.sha, meta.size, "", meta.category, true, "archive entry exceeds 1 MB audit ingestion limit")
+                                    required.remove(path)
+                                }
+                                bytes.any { it.toInt() == 0 } -> {
+                                    excluded += RepoFile(path, meta.sha, meta.size, "", meta.category, true, "binary content")
+                                    required.remove(path)
+                                }
+                                else -> found[path] = RepoFile(path, meta.sha, meta.size, String(bytes, StandardCharsets.UTF_8), meta.category)
                             }
                         }
                     }
@@ -124,22 +125,92 @@ class GitHubClient(private val settings: SecureSettings) {
             }
         }
 
-        val missing = requiredMeta.keys - found.keys
+        val missing = required.keys - found.keys
         if (missing.isNotEmpty()) {
             throw IllegalStateException(
                 "Pinned repository archive did not contain ${missing.size} required manifest file(s), including ${missing.take(8).joinToString()}. Exhaustive audit aborted rather than silently skipping them."
             )
         }
 
-        val files = requiredMeta.keys.map { path -> found.getValue(path) }
-        RepoSnapshot(repo, ref, commitSha, files, excluded.sortedBy { it.path })
+        RepoSnapshot(
+            repo = repo,
+            ref = ref,
+            commitSha = commitSha,
+            files = required.keys.map { found.getValue(it) },
+            excluded = excluded.distinctBy { it.path }.sortedBy { it.path }
+        )
+    }
+
+    private fun loadCompleteTreeManifest(safeRepo: String, rootTreeSha: String): List<TreeMeta> {
+        val recursiveRequest = auth(
+            Request.Builder().url("https://api.github.com/repos/$safeRepo/git/trees/$rootTreeSha?recursive=1")
+        ).build()
+        val recursiveRoot = JSONObject(executeText(recursiveRequest))
+        if (!recursiveRoot.optBoolean("truncated", false)) {
+            return blobsFromTree(recursiveRoot.optJSONArray("tree") ?: JSONArray(), prefix = "")
+        }
+
+        // GitHub may truncate recursive trees on large repositories. Fall back to walking each
+        // tree object non-recursively so the audit denominator is still complete and provable.
+        val out = linkedMapOf<String, TreeMeta>()
+        val queue = ArrayDeque<PendingTree>()
+        queue.add(PendingTree("", rootTreeSha))
+        val visitedTrees = mutableSetOf<String>()
+        var visitedCount = 0
+
+        while (queue.isNotEmpty()) {
+            val pending = queue.removeFirst()
+            if (!visitedTrees.add(pending.sha)) continue
+            visitedCount++
+            if (visitedCount > 100_000) {
+                throw IllegalStateException("GitHub tree traversal exceeded 100,000 tree objects; exhaustive manifest aborted rather than risking incomplete coverage")
+            }
+
+            val request = auth(
+                Request.Builder().url("https://api.github.com/repos/$safeRepo/git/trees/${pending.sha}")
+            ).build()
+            val root = JSONObject(executeText(request))
+            if (root.optBoolean("truncated", false)) {
+                throw IllegalStateException("GitHub unexpectedly truncated a non-recursive tree object; exhaustive manifest cannot be proven")
+            }
+            val tree = root.optJSONArray("tree") ?: JSONArray()
+            for (i in 0 until tree.length()) {
+                val item = tree.optJSONObject(i) ?: continue
+                val name = item.optString("path")
+                if (name.isBlank()) continue
+                val path = if (pending.prefix.isBlank()) name else "${pending.prefix}/$name"
+                when (item.optString("type")) {
+                    "blob" -> {
+                        val sha = item.optString("sha")
+                        out[path] = TreeMeta(path, sha, item.optLong("size", 0L), classify(path))
+                    }
+                    "tree" -> {
+                        val sha = item.optString("sha")
+                        if (sha.isBlank()) throw IllegalStateException("GitHub tree entry $path did not include a SHA")
+                        queue.add(PendingTree(path, sha))
+                    }
+                }
+            }
+        }
+        return out.values.sortedBy { it.path }
+    }
+
+    private fun blobsFromTree(tree: JSONArray, prefix: String): List<TreeMeta> = buildList {
+        for (i in 0 until tree.length()) {
+            val item = tree.optJSONObject(i) ?: continue
+            if (item.optString("type") != "blob") continue
+            val rawPath = item.optString("path")
+            val path = if (prefix.isBlank()) rawPath else "$prefix/$rawPath"
+            add(TreeMeta(path, item.optString("sha"), item.optLong("size", 0L), classify(path)))
+        }
     }
 
     private fun exclusionReason(path: String, size: Long): String? {
         val lower = path.lowercase()
-        if (size > 1_000_000L) return "file exceeds 1 MB audit ingestion limit"
-        val segments = lower.split('/')
-        if (segments.any { it in setOf(".git", "node_modules", "vendor", "dist", "build", ".gradle", ".idea", "coverage", "target", "pods") }) return "generated/vendor directory"
+        if (size > 1_000_000) return "file exceeds 1 MB audit ingestion limit"
+        if (lower.split('/').any { it in setOf(".git", "node_modules", "vendor", "dist", "build", ".gradle", ".idea", "coverage", "target", "pods") }) {
+            return "generated/vendor directory"
+        }
         val blocked = setOf(
             ".png", ".jpg", ".jpeg", ".gif", ".webp", ".ico", ".pdf", ".zip", ".gz", ".7z", ".jar", ".aar", ".apk",
             ".so", ".dll", ".exe", ".bin", ".mp3", ".mp4", ".mov", ".woff", ".woff2", ".ttf", ".otf"

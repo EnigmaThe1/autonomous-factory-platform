@@ -1,216 +1,29 @@
 package com.llmcouncil.mobile.domain
-
-import com.llmcouncil.mobile.data.ModelHealthDb
-import com.llmcouncil.mobile.data.OpenRouterClient
-import com.llmcouncil.mobile.data.SecureSettings
+import com.llmcouncil.mobile.data.*
 import com.llmcouncil.mobile.model.*
 import kotlinx.coroutines.*
-import kotlinx.coroutines.sync.Semaphore
-import kotlinx.coroutines.sync.withPermit
+import kotlinx.coroutines.sync.*
 import kotlin.math.round
+class CouncilEngine(private val client:OpenRouterClient,private val settings:SecureSettings,private val healthDb:ModelHealthDb){companion object{private const val S1=2048;private const val S2=1536;private const val S3=3072}
+ private suspend fun trackedChat(model:String,prompt:String,maxTokens:Int):String=try{val text=client.chat(model,prompt,maxTokens);if(text.isBlank())throw IllegalStateException("Model returned an empty response");withContext(Dispatchers.IO){healthDb.record(model,true)};text}catch(e:Exception){withContext(Dispatchers.IO){healthDb.record(model,false,e.message?:e.toString())};throw e}
+ suspend fun run(question:String,resume:CouncilRun?=null,onUpdate:suspend(CouncilRun)->Unit):CouncilRun=coroutineScope{val configured=settings.councilModels();var run=resume?.takeIf{it.question==question&&it.stage !in listOf(CouncilStage.COMPLETE,CouncilStage.CANCELLED)}?:CouncilRun(question,stage=CouncilStage.STAGE1);onUpdate(run);val ids=try{client.models().map{it.id}.toSet()}catch(_:Exception){emptySet()};val unavailable=if(ids.isEmpty())emptyList()else configured.filter{it !in ids};val selected=if(ids.isEmpty())configured else configured.filter{it in ids};val pre=unavailable.associateWith{"Model is no longer present in the currently configured provider catalogues. Choose a replacement in Models."};if(selected.size<2&&run.stage1.isEmpty()){run=run.copy(stage=CouncilStage.ERROR,errors=pre+("Council" to "Stage 1 cannot start: fewer than two currently available council models are selected."),finishedAt=System.currentTimeMillis());onUpdate(run);return@coroutineScope run};val sem=Semaphore(settings.maxConcurrency());val stage1:List<ModelAnswer>;val resumed=run.stage1.filter{it.error==null&&it.text.isNotBlank()};if(run.stage1.isNotEmpty()&&resumed.size>=2){stage1=run.stage1;run=run.copy(stage=CouncilStage.STAGE2,finishedAt=null);onUpdate(run)}else{run=run.copy(stage=CouncilStage.STAGE1,stage1=emptyList(),stage2=emptyList(),aggregate=emptyList(),chairman=null,finishedAt=null);onUpdate(run);stage1=selected.map{model->async{sem.withPermit{val t=System.currentTimeMillis();try{ModelAnswer(model,trackedChat(model,question,S1),System.currentTimeMillis()-t)}catch(e:Exception){ModelAnswer(model,"",System.currentTimeMillis()-t,e.message?:e.toString())}}}}.awaitAll();run=run.copy(stage1=stage1,errors=pre+stage1.mapNotNull{it.error?.let{e->it.model to e}}.toMap());onUpdate(run)};val ok1=stage1.filter{it.error==null&&it.text.isNotBlank()};if(ok1.size<2){run=run.copy(stage=CouncilStage.ERROR,errors=run.errors+("Council" to "Stopped after Stage 1: ${ok1.size}/${stage1.size.coerceAtLeast(selected.size)} available models produced usable answers. At least two are required for peer review."),finishedAt=System.currentTimeMillis());onUpdate(run);return@coroutineScope run};val labels=linkedMapOf<String,String>();val responses=buildString{ok1.forEachIndexed{i,a->val l="Response ${('A'.code+i).toChar()}";labels[l]=a.model;if(isNotEmpty())append("\n\n");append("$l:\n${a.text}")}};val rankPrompt="""Evaluate the anonymized responses to this question:
+$question
 
-class CouncilEngine(
-    private val client: OpenRouterClient,
-    private val settings: SecureSettings,
-    private val healthDb: ModelHealthDb
-) {
-    companion object {
-        private const val STAGE1_MAX_TOKENS = 2048
-        private const val STAGE2_MAX_TOKENS = 1536
-        private const val STAGE3_MAX_TOKENS = 3072
-    }
+$responses
 
-    private suspend fun trackedChat(model: String, prompt: String, maxTokens: Int): String {
-        return try {
-            val text = client.chat(model, prompt, maxTokens)
-            val ok = text.isNotBlank()
-            withContext(Dispatchers.IO) { healthDb.record(model, ok, if (ok) null else "Empty response") }
-            if (!ok) throw IllegalStateException("Model returned an empty response")
-            text
-        } catch (e: Exception) {
-            withContext(Dispatchers.IO) { healthDb.record(model, false, e.message ?: e.toString()) }
-            throw e
-        }
-    }
-
-    suspend fun run(
-        question: String,
-        resume: CouncilRun? = null,
-        onUpdate: suspend (CouncilRun) -> Unit
-    ): CouncilRun = coroutineScope {
-        val configured = settings.councilModels()
-        var run = resume?.takeIf { it.question == question && it.stage !in listOf(CouncilStage.COMPLETE, CouncilStage.CANCELLED) }
-            ?: CouncilRun(question = question, stage = CouncilStage.STAGE1)
-        onUpdate(run)
-
-        val catalogueIds = try { client.models().map { it.id }.toSet() } catch (_: Exception) { emptySet() }
-        val unavailable = if (catalogueIds.isEmpty()) emptyList() else configured.filter { it !in catalogueIds }
-        val selected = if (catalogueIds.isEmpty()) configured else configured.filter { it in catalogueIds }
-        val preflightErrors = unavailable.associateWith { "Model is no longer present in the currently configured provider catalogues. Choose a replacement in Models." }
-
-        if (selected.size < 2 && run.stage1.isEmpty()) {
-            run = run.copy(
-                stage = CouncilStage.ERROR,
-                errors = preflightErrors + ("Council" to "Stage 1 cannot start: fewer than two currently available council models are selected."),
-                finishedAt = System.currentTimeMillis()
-            )
-            onUpdate(run)
-            return@coroutineScope run
-        }
-
-        val semaphore = Semaphore(settings.maxConcurrency())
-
-        val stage1: List<ModelAnswer>
-        val resumeStage1 = run.stage1.filter { it.error == null && it.text.isNotBlank() }
-        if (run.stage1.isNotEmpty() && resumeStage1.size >= 2) {
-            stage1 = run.stage1
-            run = run.copy(stage = CouncilStage.STAGE2, finishedAt = null)
-            onUpdate(run)
-        } else {
-            run = run.copy(stage = CouncilStage.STAGE1, stage1 = emptyList(), stage2 = emptyList(), aggregate = emptyList(), chairman = null, finishedAt = null)
-            onUpdate(run)
-            stage1 = selected.map { model ->
-                async {
-                    semaphore.withPermit {
-                        val started = System.currentTimeMillis()
-                        try { ModelAnswer(model, trackedChat(model, question, STAGE1_MAX_TOKENS), System.currentTimeMillis() - started) }
-                        catch (e: Exception) { ModelAnswer(model, "", System.currentTimeMillis() - started, e.message ?: e.toString()) }
-                    }
-                }
-            }.awaitAll()
-            val stage1Errors = stage1.mapNotNull { it.error?.let { e -> it.model to e } }.toMap()
-            run = run.copy(stage1 = stage1, errors = preflightErrors + stage1Errors)
-            onUpdate(run)
-        }
-
-        val successful1 = stage1.filter { it.error == null && it.text.isNotBlank() }
-        if (successful1.size < 2) {
-            run = run.copy(
-                stage = CouncilStage.ERROR,
-                errors = run.errors + ("Council" to "Stopped after Stage 1: ${successful1.size}/${stage1.size.coerceAtLeast(selected.size)} available models produced usable answers. At least two are required for peer review."),
-                finishedAt = System.currentTimeMillis()
-            )
-            onUpdate(run)
-            return@coroutineScope run
-        }
-
-        val labelToModel = LinkedHashMap<String, String>()
-        val responsesText = buildString {
-            successful1.forEachIndexed { index, answer ->
-                val label = "Response ${('A'.code + index).toChar()}"
-                labelToModel[label] = answer.model
-                if (isNotEmpty()) append("\n\n")
-                append(label).append(":\n").append(answer.text)
-            }
-        }
-
-        val rankingPrompt = """You are evaluating different responses to the following question:
-
-Question: $question
-
-Here are the responses from different models (anonymized):
-
-$responsesText
-
-Your task:
-1. First, evaluate each response individually. For each response, explain what it does well and what it does poorly.
-2. Then, at the very end of your response, provide a final ranking.
-
-IMPORTANT: Your final ranking MUST be formatted EXACTLY as follows:
-- Start with the line "FINAL RANKING:" (all caps, with colon)
-- Then list the responses from best to worst as a numbered list
-- Each line should be: number, period, space, then ONLY the response label (e.g., "1. Response A")
-- Do not add any other text or explanations in the ranking section
-
-Example:
+Evaluate each response, then end with exactly:
 FINAL RANKING:
-1. Response C
-2. Response A
-3. Response B
+1. Response X
+2. Response Y
+List only response labels in that final section.""";val stage2:List<RankingReview>;if(run.stage2.isNotEmpty()){stage2=run.stage2;run=run.copy(stage=CouncilStage.STAGE3,finishedAt=null);onUpdate(run)}else{run=run.copy(stage=CouncilStage.STAGE2,finishedAt=null);onUpdate(run);stage2=ok1.map{it.model}.map{model->async{sem.withPermit{val t=System.currentTimeMillis();try{val text=trackedChat(model,rankPrompt,S2);RankingReview(model,text,parseRanking(text),System.currentTimeMillis()-t)}catch(e:Exception){RankingReview(model,"",emptyList(),System.currentTimeMillis()-t,e.message?:e.toString())}}}}.awaitAll();run=run.copy(stage2=stage2,aggregate=aggregate(stage2,labels),errors=run.errors+stage2.mapNotNull{it.error?.let{e->"${it.model} (review)" to e}}.toMap());onUpdate(run)};if(run.aggregate.isEmpty()){run=run.copy(aggregate=aggregate(stage2,labels));onUpdate(run)};run=run.copy(stage=CouncilStage.STAGE3,finishedAt=null);onUpdate(run);val s1=ok1.joinToString("\n\n"){"Model: ${it.model}\nResponse: ${it.text}"};val s2=stage2.filter{it.error==null&&it.text.isNotBlank()}.joinToString("\n\n"){"Model: ${it.model}\nRanking: ${it.text}"};val prompt="""You are the Chairman of OmniCouncil. Synthesize the independent responses and peer rankings into one accurate answer.
+Original question: $question
 
-Now provide your evaluation and ranking:"""
+Independent responses:
+$s1
 
-        val stage2: List<RankingReview>
-        if (run.stage2.isNotEmpty()) {
-            stage2 = run.stage2
-            run = run.copy(stage = CouncilStage.STAGE3, finishedAt = null)
-            onUpdate(run)
-        } else {
-            run = run.copy(stage = CouncilStage.STAGE2, finishedAt = null)
-            onUpdate(run)
-            stage2 = successful1.map { it.model }.map { model ->
-                async {
-                    semaphore.withPermit {
-                        val started = System.currentTimeMillis()
-                        try {
-                            val text = trackedChat(model, rankingPrompt, STAGE2_MAX_TOKENS)
-                            RankingReview(model, text, parseRanking(text), System.currentTimeMillis() - started)
-                        } catch (e: Exception) {
-                            RankingReview(model, "", emptyList(), System.currentTimeMillis() - started, e.message ?: e.toString())
-                        }
-                    }
-                }
-            }.awaitAll()
-            val aggregate = aggregate(stage2, labelToModel)
-            val errors = run.errors + stage2.mapNotNull { it.error?.let { e -> "${it.model} (review)" to e } }.toMap()
-            run = run.copy(stage2 = stage2, aggregate = aggregate, errors = errors)
-            onUpdate(run)
-        }
+Peer reviews:
+$s2
 
-        if (run.aggregate.isEmpty()) {
-            run = run.copy(aggregate = aggregate(stage2, labelToModel))
-            onUpdate(run)
-        }
-
-        run = run.copy(stage = CouncilStage.STAGE3, finishedAt = null)
-        onUpdate(run)
-        val stage1Text = successful1.joinToString("\n\n") { "Model: ${it.model}\nResponse: ${it.text}" }
-        val successful2 = stage2.filter { it.error == null && it.text.isNotBlank() }
-        val stage2Text = successful2.joinToString("\n\n") { "Model: ${it.model}\nRanking: ${it.text}" }
-        val chairmanPrompt = """You are the Chairman of an LLM Council. Multiple AI models have provided responses to a user's question, and then ranked each other's responses.
-
-Original Question: $question
-
-STAGE 1 - Individual Responses:
-$stage1Text
-
-STAGE 2 - Peer Rankings:
-$stage2Text
-
-Your task as Chairman is to synthesize all of this information into a single, comprehensive, accurate answer to the user's original question. Consider:
-- The individual responses and their insights
-- The peer rankings and what they reveal about response quality
-- Any patterns of agreement or disagreement
-
-Provide a clear, well-reasoned final answer that represents the council's collective wisdom:"""
-
-        val configuredChairman = settings.chairman()
-        val survivingModels = successful1.map { it.model }.toSet()
-        val chairmanModel = if (configuredChairman in survivingModels) configuredChairman else successful1.first().model
-        val started = System.currentTimeMillis()
-        val chairman = try { ModelAnswer(chairmanModel, trackedChat(chairmanModel, chairmanPrompt, STAGE3_MAX_TOKENS), System.currentTimeMillis() - started) }
-        catch (e: Exception) { ModelAnswer(chairmanModel, "", System.currentTimeMillis() - started, e.message ?: e.toString()) }
-        run = if (chairman.error == null) run.copy(stage = CouncilStage.COMPLETE, chairman = chairman, finishedAt = System.currentTimeMillis())
-        else run.copy(stage = CouncilStage.ERROR, chairman = chairman, errors = run.errors + ("$chairmanModel (chairman)" to chairman.error), finishedAt = System.currentTimeMillis())
-        onUpdate(run)
-        run
-    }
-
-    private fun parseRanking(text: String): List<String> {
-        val source = text.substringAfter("FINAL RANKING:", text)
-        return Regex("Response [A-Z]").findAll(source).map { it.value }.toList().distinct()
-    }
-
-    private fun aggregate(reviews: List<RankingReview>, labels: Map<String, String>): List<AggregateRank> {
-        val positions = linkedMapOf<String, MutableList<Int>>()
-        reviews.filter { it.error == null }.forEach { review ->
-            review.parsedRanking.forEachIndexed { index, label ->
-                labels[label]?.let { model -> positions.getOrPut(model) { mutableListOf() }.add(index + 1) }
-            }
-        }
-        return positions.map { (model, values) ->
-            val avg = if (values.isEmpty()) 999.0 else values.average()
-            AggregateRank(model, round(avg * 100.0) / 100.0, values.size)
-        }.sortedBy { it.averageRank }
-    }
+Preserve important disagreements and do not treat consensus alone as proof.""";val configuredChairman=settings.chairman();val survivors=ok1.map{it.model}.toSet();val chairmanModel=if(configuredChairman in survivors)configuredChairman else ok1.first().model;val t=System.currentTimeMillis();val chairman=try{ModelAnswer(chairmanModel,trackedChat(chairmanModel,prompt,S3),System.currentTimeMillis()-t)}catch(e:Exception){ModelAnswer(chairmanModel,"",System.currentTimeMillis()-t,e.message?:e.toString())};run=if(chairman.error==null)run.copy(stage=CouncilStage.COMPLETE,chairman=chairman,finishedAt=System.currentTimeMillis())else run.copy(stage=CouncilStage.ERROR,chairman=chairman,errors=run.errors+("$chairmanModel (chairman)" to chairman.error!!),finishedAt=System.currentTimeMillis());onUpdate(run);run}
+ private fun parseRanking(text:String)=Regex("Response [A-Z]").findAll(text.substringAfter("FINAL RANKING:",text)).map{it.value}.toList().distinct();private fun aggregate(reviews:List<RankingReview>,labels:Map<String,String>):List<AggregateRank>{val p=linkedMapOf<String,MutableList<Int>>();reviews.filter{it.error==null}.forEach{r->r.parsedRanking.forEachIndexed{i,l->labels[l]?.let{m->p.getOrPut(m){mutableListOf()}.add(i+1)}}};return p.map{(m,v)->AggregateRank(m,round((if(v.isEmpty())999.0 else v.average())*100)/100,v.size)}.sortedBy{it.averageRank}}
 }
